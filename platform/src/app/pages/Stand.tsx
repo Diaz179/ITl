@@ -7,10 +7,10 @@ import { api, ago, fmt } from '../api';
 import { ErrorLine, Modal, useAsync } from '../ui';
 
 const PATH_RU: Record<string, string> = {
-  gateway: 'трекер → шлюз ITles (TCP)',
-  wialon_local: 'трекер → Wialon Local → ретранслятор → шлюз ITles',
-  omnicomm_online: 'трекер → Omnicomm Online → EGTS → шлюз ITles',
-  traccar: 'трекер → Traccar → API → ITles',
+  gateway: 'трекер → шлюз Отсчёта (TCP)',
+  wialon_local: 'трекер → Wialon Local → ретранслятор → шлюз Отсчёта',
+  omnicomm_online: 'трекер → Omnicomm Online → EGTS → шлюз Отсчёта',
+  traccar: 'трекер → Traccar → API → Отсчёт',
 };
 const PROTO_RU: Record<string, string> = {
   galileosky: 'Galileosky (бинарный, теги)',
@@ -94,7 +94,7 @@ export function Stand({ me }: { me: Me }) {
           <h1 className="text-2xl font-bold">Стенд: от датчика до приложения</h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
             Здесь работает не картинка, а цепочка программ. Модели двигателей выдают кадры CAN J1939. Эмуляторы прошивок трекеров читают эти кадры, копят
-            записи в «чёрном ящике» и отправляют настоящие байты протоколов по TCP: на шлюз ITles, на публичный сервер Traccar или через эмулятор
+            записи в «чёрном ящике» и отправляют настоящие байты протоколов по TCP: на шлюз Отсчёта, на публичный сервер Traccar или через эмулятор
             платформы-ретранслятора. Данные машин смоделированы; протоколы, соединения, шлюз, Traccar и эта платформа — настоящие.
           </p>
         </div>
@@ -127,9 +127,9 @@ export function Stand({ me }: { me: Me }) {
         <ArrowRight className="hidden h-5 w-5 self-center text-muted-foreground lg:block" />
         <Step icon={Signal} title="Сотовая сеть" sub="SIM M2M, GPRS/LTE, TCP-сессия к серверу" ok={comp('network')?.status === 'up' || null} />
         <ArrowRight className="hidden h-5 w-5 self-center text-muted-foreground lg:block" />
-        <Step icon={Server} title="Сервер приёма" sub="шлюз ITles (TCP → HTTPS), Traccar, платформы-ретрансляторы; подробности — в «Компонентах»" ok={comp('gateway')?.status === 'up' || null} />
+        <Step icon={Server} title="Сервер приёма" sub="шлюз Отсчёта (TCP → HTTPS), Traccar, платформы-ретрансляторы; подробности — в «Компонентах»" ok={comp('gateway')?.status === 'up' || null} />
         <ArrowRight className="hidden h-5 w-5 self-center text-muted-foreground lg:block" />
-        <Step icon={Radio} title="ITles" sub="HTTPS API → PostgreSQL → карта, таймлайн, отчёты" ok={true} />
+        <Step icon={Radio} title="Отсчёт" sub="HTTPS API → PostgreSQL → карта, таймлайн, отчёты" ok={true} />
       </div>
 
       {st?.components?.length > 0 && (
@@ -162,7 +162,7 @@ export function Stand({ me }: { me: Me }) {
               <th className="px-3 py-2">Протокол и путь</th>
               <th className="px-3 py-2">Связь</th>
               <th className="px-3 py-2">Сейчас на машине</th>
-              <th className="px-3 py-2">В ITles</th>
+              <th className="px-3 py-2">В Отсчёте</th>
               {d?.can_control && <th className="px-3 py-2">Сценарий</th>}
             </tr>
           </thead>

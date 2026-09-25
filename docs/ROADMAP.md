@@ -1,5 +1,11 @@
 # ITles: состояние и план доведения до эксплуатации
 
+## Редизайн «Отсчёт», 25.09.2026, 22:39 UTC
+
+- Рабочий `itles.vercel.app` обновлён из `Diaz179/ITl@2a18962fa858` ([PR #1](https://github.com/Diaz179/ITl/pull/1)): новое публичное имя «Отсчёт», айдентика, лендинг и оформление кабинета ([описание](design/BRAND-2026-09-25.md)). Изменения только во фронтенде: исходники `platform/` в базе ветки совпадали с production `mikhailsilva/horisont@581699f9a85c`, схема БД и API не менялись.
+- Проверено после выпуска: `/api/health` 200 (`db=pg`), `/api/setup/status` → `needs_setup=false`, `/api/connectors` без авторизации → 401, домены эмуляторов `granit-aemp` и `severles-wialon` → 200, JS-бандлы production совпадают с локальной сборкой. До выпуска: typecheck, 76 тестов платформы, Playwright e2e без изменения спецификации, `build:vercel`, сборка из архива коммита.
+- Откат кода — promotion прежнего READY-деплоя `itles-cul7xtb5f-…` (14:59 UTC). Нативные сборки не пересобирались и по-прежнему называются ITles. Реальные GPU, телефоны и Safari не проверялись.
+
 ## Выпуск 25.09.2026, 14:59 UTC
 
 - Рабочий `itles.vercel.app` обновлён из `mikhailsilva/horisont@581699f9a85c` (Vercel production READY). Проверены `/api/health` (200, PostgreSQL), `/api/setup/status` (`needs_setup=false`), отсутствие доступа без авторизации к `/api/connectors` (401) и совпадение JS-бандлов рабочего сайта с локальной сборкой. Строка API `version=0.3.0` не служит идентификатором релиза.

@@ -7,7 +7,7 @@ const KINDS = [
   {
     kind: 'autograph',
     title: 'АвтоГРАФ (ТехноКом)',
-    hint: 'Основной способ. Контроллеры АвтоГРАФ читают CAN-шину машины (моточасы, топливо, обороты, температура) и GPS/ГЛОНАСС и передают их на сервер АвтоГРАФ. Укажите адрес АвтоГРАФ.WEB и пользователя, у роли которого включено право «Доступ через API». ITles только читает данные.',
+    hint: 'Основной способ. Контроллеры АвтоГРАФ читают CAN-шину машины (моточасы, топливо, обороты, температура) и GPS/ГЛОНАСС и передают их на сервер АвтоГРАФ. Укажите адрес АвтоГРАФ.WEB и пользователя, у роли которого включено право «Доступ через API». Отсчёт только читает данные.',
     fields: [
       ['base_url', 'Адрес АвтоГРАФ.WEB', 'https://web.ваш-дилер.ru'],
       ['username', 'Логин пользователя API', ''],
@@ -196,11 +196,11 @@ export function Connect({ me }: { me: Me }) {
           <p className="text-sm text-muted-foreground">{k.hint}</p>
           {kind === 'autograph' && (
             <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm space-y-2" data-testid="autograph-paths">
-              <p><b>Как данные АвтоГРАФ попадают в ITles.</b> Выберите путь, который уже есть у вашего дилера ТехноКом:</p>
+              <p><b>Как данные АвтоГРАФ попадают в Отсчёт.</b> Выберите путь, который уже есть у вашего дилера ТехноКом:</p>
               <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
                 <li><b className="text-foreground">API АвтоГРАФ.WEB</b> — эта форма: без нового оборудования и перенастройки контроллеров.</li>
-                <li><b className="text-foreground">Второй сервер контроллера</b> — АвтоГРАФ серии X передаёт копию данных по EGTS или Wialon IPS 2.1 прямо в шлюз ITles, основной сервер дилера продолжает работать. Адрес шлюза выдаётся при пилоте.</li>
-                <li><b className="text-foreground">Ретрансляция АвтоГРАФ.Сервер</b> — сервер дилера пересылает весь парк по EGTS в шлюз ITles.</li>
+                <li><b className="text-foreground">Второй сервер контроллера</b> — АвтоГРАФ серии X передаёт копию данных по EGTS или Wialon IPS 2.1 прямо в шлюз Отсчёта, основной сервер дилера продолжает работать. Адрес шлюза выдаётся при пилоте.</li>
+                <li><b className="text-foreground">Ретрансляция АвтоГРАФ.Сервер</b> — сервер дилера пересылает весь парк по EGTS в шлюз Отсчёта.</li>
               </ol>
               <div className="flex flex-wrap gap-2 pt-1">
                 <button type="button" className="btn-ghost" disabled={busy || testBusy} onClick={() => { setF((old) => ({ org_id: old.org_id ?? '', base_url: 'https://demo.tk-nav.com', username: 'demo', password: 'demo', label: 'АвтоГРАФ — публичное демо ТехноКом' })); setDemoExpires(null); setTestResult(null); setErr(null); }}>
@@ -210,14 +210,14 @@ export function Connect({ me }: { me: Me }) {
                   <button type="button" className="btn-ghost" onClick={prepareDemo} disabled={busy || testBusy}>Заполнить личный тест · 3 машины</button>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">Публичное демо — настоящий сервер АвтоГРАФ.WEB производителя с архивными данными 2013 года: годится для «Проверить без сохранения», импорт разрешён только в демо-клиента. Личный тест — синтетический эмулятор API внутри ITles (К-742М, John Deere 8R, МТЗ-82.1), не реальные контроллеры.</p>
+              <p className="text-xs text-muted-foreground">Публичное демо — настоящий сервер АвтоГРАФ.WEB производителя с архивными данными 2013 года: годится для «Проверить без сохранения», импорт разрешён только в демо-клиента. Личный тест — синтетический эмулятор API внутри Отсчёта (К-742М, John Deere 8R, МТЗ-82.1), не реальные контроллеры.</p>
               {demoExpires && <p>Доступ действует до {new Date(demoExpires).toLocaleString('ru-RU')}. До нажатия «Подключить» машины в парк не добавляются.</p>}
             </div>
           )}
           {kind === 'traccar' && me.role === 'superadmin' && !me.is_demo && (
             <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm">
               <button type="button" className="btn-ghost" onClick={prepareDemo} disabled={busy || testBusy}>Заполнить личный тест · 3 машины</button>
-              <p className="mt-2 text-muted-foreground">Изолированный Traccar-совместимый эмулятор в ITles, не VPS и не реальные трекеры. Адрес и временный токен заполнятся автоматически. Выберите отдельного тестового клиента; затем проверьте доступ без сохранения.</p>
+              <p className="mt-2 text-muted-foreground">Изолированный Traccar-совместимый эмулятор в Отсчёте, не VPS и не реальные трекеры. Адрес и временный токен заполнятся автоматически. Выберите отдельного тестового клиента; затем проверьте доступ без сохранения.</p>
               {demoExpires && <p className="mt-2">Токен действует до {new Date(demoExpires).toLocaleString('ru-RU')}. До нажатия «Подключить» машины в парк не добавляются.</p>}
             </div>
           )}

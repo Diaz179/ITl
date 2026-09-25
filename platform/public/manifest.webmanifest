@@ -1,16 +1,17 @@
 {
-  "name": "ITles — мониторинг спецтехники",
-  "short_name": "ITles",
-  "description": "Моточасы, пробег и местоположение спецтехники",
+  "name": "Отсчёт — мониторинг спецтехники",
+  "short_name": "Отсчёт",
+  "description": "Моточасы, пробег, местоположение и масло спецтехники",
   "lang": "ru",
   "start_url": "./app/",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#09090b",
-  "theme_color": "#09090b",
+  "background_color": "#0b0c0a",
+  "theme_color": "#0b0c0a",
   "icons": [
     { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "./icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
     { "src": "./favicon.svg", "sizes": "any", "type": "image/svg+xml" }
   ]
 }

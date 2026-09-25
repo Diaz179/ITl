@@ -64,7 +64,7 @@ function Pair({ onDone, alreadyPaired = false }: { onDone: () => void; alreadyPa
         <p className="text-sm text-muted-foreground">
           {alreadyPaired
             ? 'Этот браузер уже подключён к машине. Подтвердите замену привязки, только если хотите подключить его к другой машине.'
-            : 'Введите 6 цифр со страницы машины в кабинете ITles («Источники данных» → «+ Телефон (ссылка)»).'}
+            : 'Введите 6 цифр со страницы машины в кабинете Отсчёта («Источники данных» → «+ Телефон (ссылка)»).'}
         </p>
         <input
           className="input text-center font-mono text-3xl tracking-[0.4em]"
