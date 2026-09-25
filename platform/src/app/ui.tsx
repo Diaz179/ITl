@@ -18,24 +18,56 @@ export function Fresh({ f, t }: { f: string; t: number | null }) {
   );
 }
 
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  const titleId = useId();
-  const panel = useRef<HTMLDivElement>(null);
+// Open dialogs, innermost last: only the top one reacts to Escape and traps Tab.
+const dialogStack: object[] = [];
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Focus in on open, trap Tab, close on Escape, lock page scroll, restore focus on close. */
+export function useDialog(panel: React.RefObject<HTMLElement | null>, onClose: () => void, initialFocus = true) {
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
+    const token = {};
+    dialogStack.push(token);
     const previous = document.activeElement as HTMLElement | null;
-    panel.current?.focus({ preventScroll: true });
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close.current();
+    if (initialFocus) panel.current?.focus({ preventScroll: true });
+    const onKey = (e: KeyboardEvent) => {
+      if (dialogStack[dialogStack.length - 1] !== token || !panel.current) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close.current();
+      } else if (e.key === 'Tab') {
+        const items = Array.from(panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null || el === document.activeElement);
+        if (!items.length) return e.preventDefault();
+        const first = items[0];
+        const last = items[items.length - 1];
+        const inside = panel.current.contains(document.activeElement);
+        if (e.shiftKey && (document.activeElement === first || !inside)) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
     addEventListener('keydown', onKey);
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       removeEventListener('keydown', onKey);
+      dialogStack.splice(dialogStack.indexOf(token), 1);
       document.body.style.overflow = overflow;
       previous?.focus?.({ preventScroll: true });
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+}
+
+export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  const titleId = useId();
+  const panel = useRef<HTMLDivElement>(null);
+  useDialog(panel, onClose);
   return (
     <div className="backdrop-in fixed inset-0 z-[2000] flex items-end justify-center bg-black/55 backdrop-blur-[3px] sm:items-center sm:p-4" onClick={onClose}>
       <div
