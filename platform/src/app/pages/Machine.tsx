@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Camera, Check, ImagePlus, Trash2 } from 'lucide-react';
 import { can, sees, type Me } from '../perm';
 import { go } from '../main';
 import { api, apiBase, CATEGORY_RU, fmt, METHOD_RU, SOURCE_RU } from '../api';
@@ -52,11 +52,12 @@ function ReadingForm({ id, onDone }: { id: string; onDone: () => void }) {
         </select>
         <input className="input tabular-nums" inputMode="decimal" placeholder="Показание" value={value} onChange={(e) => setValue(e.target.value)} required />
       </div>
-      <label className="btn-ghost w-full cursor-pointer">
+      <label className={`btn-ghost w-full cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary ${photo ? 'border-success/50 text-success' : ''}`}>
+        {photo ? <Check className="h-4 w-4" strokeWidth={2.25} aria-hidden="true" /> : <Camera className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />}
         {photo ? 'Фото прикреплено ✓' : 'Сфотографировать счётчик'}
-        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={async (e) => e.target.files?.[0] && setPhoto(await fileToJpeg(e.target.files[0]))} />
+        <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={async (e) => e.target.files?.[0] && setPhoto(await fileToJpeg(e.target.files[0]))} />
       </label>
-      {photo && <img src={photo} className="max-h-40 rounded-xl" alt="счётчик" />}
+      {photo && <img src={photo} className="max-h-40 rounded-xl border border-border object-contain" alt="счётчик" />}
       <ErrorLine e={err} />
       <button className="btn-primary w-full">{confirm ? 'Подтвердить: счётчик заменён' : 'Сохранить показание'}</button>
     </form>
@@ -64,7 +65,7 @@ function ReadingForm({ id, onDone }: { id: string; onDone: () => void }) {
 }
 
 const PATH_RU: Record<string, string> = {
-  gateway: 'напрямую на шлюз ITles (TCP)',
+  gateway: 'напрямую на шлюз Отсчёта (TCP)',
   wialon_local: 'через Wialon Local интегратора → ретранслятор Wialon Retranslator',
   omnicomm_online: 'через Omnicomm Online → ретрансляция EGTS',
   traccar: 'через сервер Traccar → подключение API',
@@ -201,7 +202,7 @@ function SourcesBlock({ id, sources, canManage, onChange }: { id: string; source
             </div>
           )}
           <div className="text-xs text-muted-foreground">
-            В программе настройки трекера (Galileosky Configurator, NTC Configurator и т. п.) укажите адрес шлюза ITles и порт протокола. Основной сервер
+            В программе настройки трекера (Galileosky Configurator, NTC Configurator и т. п.) укажите адрес шлюза Отсчёта и порт протокола. Основной сервер
             (например, региональная система или платформа интегратора) можно не трогать — используйте второй сервер. Подробно — в разделе «База знаний».
           </div>
           <ErrorLine e={err} />
@@ -391,9 +392,10 @@ export function MachinePage({ id, me }: { id: string; me: Me }) {
                 catch (e: any) { setPhotoError(e.message); }
                 finally { setPhotoBusy(false); }
               }}>Удалить</button>}
-              <label className="btn-ghost cursor-pointer px-2 py-1 text-xs">
+              <label className={`btn-ghost cursor-pointer px-2.5 py-1 text-xs focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary ${photoBusy ? 'pointer-events-none opacity-70' : ''}`}>
+                {photoBusy ? <span className="spinner h-3.5 w-3.5" aria-hidden="true" /> : <ImagePlus className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />}
                 {photoBusy ? 'Сохранение…' : photo ? 'Заменить фото' : 'Добавить фото'}
-                <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={photoBusy} onChange={async (e) => {
+                <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={photoBusy} onChange={async (e) => {
                   const file = e.target.files?.[0];
                   e.target.value = '';
                   if (!file) return;
@@ -410,9 +412,16 @@ export function MachinePage({ id, me }: { id: string; me: Me }) {
             </div>
           )}
         </div>
-        {photo ? <img src={photo} alt={`Фотография: ${m.name}`} className="max-h-[28rem] w-full rounded-xl object-contain" />
-          : <div className="rounded-xl border border-dashed border-border py-10 text-center text-sm text-muted-foreground">Фотография пока не добавлена</div>}
-        {photoError && <p className="mt-2 text-xs text-danger">{photoError}</p>}
+        {photoBusy && <div className="progress-indeterminate mb-3" role="progressbar" aria-label="Сохраняем фотографию" />}
+        {photo ? <img src={photo} alt={`Фотография: ${m.name}`} className={`max-h-[28rem] w-full rounded-xl object-contain transition-opacity ${photoBusy ? 'opacity-50' : ''}`} />
+          : (
+            <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-input bg-muted/40 px-4 py-10 text-center text-sm text-muted-foreground">
+              <Camera className="h-6 w-6 opacity-70" strokeWidth={1.5} aria-hidden="true" />
+              Фотография пока не добавлена
+              {can(me, 'machines.edit') && <span className="text-xs opacity-80">PNG, JPEG или WebP; перед отправкой уменьшаем до&nbsp;1280&nbsp;пикселей</span>}
+            </div>
+          )}
+        {photoError && <p role="alert" className="mt-3 rounded-lg bg-danger/10 px-3 py-2 text-xs text-danger">{photoError}</p>}
       </section>
 
       <div className="grid gap-4 md:grid-cols-3">

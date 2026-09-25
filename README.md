@@ -1,5 +1,9 @@
 # ITles — моточасы, пробег и местоположение спецтехники (FUCHS)
 
+**Публичное имя с 25.09.2026 — «Отсчёт».** Новые айдентика, лендинг и оформление кабинета
+описаны в [BRAND-2026-09-25](docs/design/BRAND-2026-09-25.md). Внутренние идентификаторы
+(ключи `itles_*`, API, маршруты, пакеты, домен и выпущенные сборки ITles) не менялись.
+
 **v2 — работающий код и протокольный стенд; испытания на смонтированной машине впереди.** Архитектура и ответы заказчика — в [диздоке v2](docs/design/DESIGN-v2.md), проверенное состояние — в [ROADMAP](docs/ROADMAP.md). Отдельно собраны [решения из диалогов, ключи по именам и следующие шаги](docs/research/dialogue-decisions-and-next-steps.md) и [история восстановления](docs/research/project-history.md).
 
 **Перенос 25.09.2026.** В ветке по умолчанию [`mikhailsilva/horisont`](https://github.com/mikhailsilva/horisont) после squash-слияния [PR #1](https://github.com/mikhailsilva/horisont/pull/1) находится дерево исходников `raulwulff6769/framework-lab` с изменениями PR #5. Исходные Git-предки PR #5 не входят в историю этой ветки: полная история доступна в том же репозитории по [архивному тегу `archive/framework-lab-pr5-2026.09.25`](https://github.com/mikhailsilva/horisont/tree/archive/framework-lab-pr5-2026.09.25), дерево которого совпадает с импортом. Upstream — источник переноса, новые PR открываются здесь, а не в upstream или прежних [`somemateria/biildfe4`](https://github.com/somemateria/biildfe4) / [`clutteredcal/ITles`](https://github.com/clutteredcal/ITles). Перенос Git не меняет production-базу и действующий деплой Vercel: по последней проверке 24.09 `itles.vercel.app` обслуживает выпуск по закреплённому SHA из framework-lab. Новый код проверять локальными тестами и изолированным Preview ([руководство Vercel](docs/operations/vercel.md)).

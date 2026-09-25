@@ -2,16 +2,377 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ITles — моточасы, пробег и местоположение спецтехники</title>
-    <meta name="description" content="Мониторинг моточасов, пробега и местоположения любой спецтехники в России: через уже установленный трекер, мониторинговую платформу или телефон в кабине. Для владельцев техники, дистрибьюторов и FUCHS." />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Отсчёт&nbsp;— моточасы, пробег, местоположение и&nbsp;масло спецтехники</title>
+    <meta name="description" content="Отсчёт&nbsp;— мониторинг моточасов, пробега, местоположения и&nbsp;масла любой спецтехники в&nbsp;России через то, что уже стоит в&nbsp;машине: трекер, платформу мониторинга, телефон в&nbsp;кабине или показание счётчика. Для владельцев техники, дистрибьюторов и&nbsp;FUCHS." />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:site_name" content="Отсчёт" />
+    <meta property="og:title" content="Отсчёт&nbsp;— техника на&nbsp;связи" />
+    <meta property="og:description" content="Моточасы, пробег, местоположение и&nbsp;масло любой спецтехники&nbsp;— из&nbsp;того, что уже стоит в&nbsp;машине." />
+    <meta property="og:image" content="https://itles.vercel.app/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <meta name="theme-color" content="#09090b" />
-    <script>try{if(localStorage.getItem("itles_theme")!=="light")document.documentElement.classList.add("dark")}catch(e){document.documentElement.classList.add("dark")}</script>
+    <link rel="preload" href="./src/brand/fonts/onest-var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./src/brand/fonts/martian-mono-var.woff2" as="font" type="font/woff2" crossorigin />
+    <meta name="theme-color" content="#0b0c0a" />
+    <script>
+      (function () {
+        var d = document.documentElement, light = false;
+        try { light = localStorage.getItem('itles_theme') === 'light'; } catch (e) {}
+        if (!light) d.classList.add('dark');
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', light ? '#f3f1ea' : '#0b0c0a');
+        if (window.matchMedia && matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+          d.classList.add('motion');
+          // never leave content hidden if the motion script fails to arrive
+          setTimeout(function () { if (!d.classList.contains('motion-ready')) d.classList.remove('motion'); }, 3000);
+        }
+      })();
+    </script>
   </head>
   <body>
-    <div id="landing"></div>
-    <script type="module" src="./src/landing/main.tsx"></script>
+    <a class="skip" href="#main">К&nbsp;содержанию</a>
+    <canvas class="stage" id="stage" aria-hidden="true"></canvas>
+
+    <header class="bar" data-bar>
+      <a class="bar__brand" href="#top" aria-label="Отсчёт&nbsp;— в&nbsp;начало страницы" data-logo></a>
+      <nav class="bar__nav" aria-label="Разделы">
+        <a href="#how">Как это работает</a>
+        <a href="#oil">Масло</a>
+        <a href="#download">Скачать</a>
+      </nav>
+      <div class="bar__actions">
+        <button class="icon-btn" type="button" data-theme-toggle aria-label="Сменить тему" title="Сменить тему">
+          <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" /><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" /></svg>
+          <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" /></svg>
+        </button>
+        <a class="btn btn--signal btn--sm" href="./app/">Войти</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- 1 · hero -->
+      <section class="hero" id="top" data-scene="symbol">
+        <div class="wrap hero__grid">
+          <p class="kicker" data-intro><span class="live-dot" aria-hidden="true"></span>Телематика спецтехники для владельцев, дистрибьюторов и&nbsp;FUCHS</p>
+          <h1 class="hero__title" data-intro-lines>
+            <span class="line"><span>Масло, моточасы</span></span>
+            <span class="line"><span>и&nbsp;местоположение</span></span>
+            <span class="line"><span>любой <em>спецтехники</em></span></span>
+          </h1>
+          <div class="hero__foot" data-intro>
+            <p class="lead">Данные берутся из&nbsp;того, что уже есть в&nbsp;машине: трекер, CAN-шина двигателя, платформа мониторинга, телефон. Покупка оборудования&nbsp;— в&nbsp;последнюю очередь.</p>
+            <div class="cta-row">
+              <a class="btn btn--signal btn--lg" href="./app/">Открыть кабинет <span class="btn__arrow" aria-hidden="true">→</span></a>
+              <a class="btn btn--ghost btn--lg" href="#download">Скачать приложение</a>
+            </div>
+          </div>
+        </div>
+        <div class="hero__strip wrap" aria-hidden="true">
+          <span>трекер</span><span>платформа</span><span>телефон</span><span>счётчик</span>
+          <span class="hero__scroll">листайте</span>
+        </div>
+      </section>
+
+      <!-- 2 · manifesto: primitives morph through machine classes -->
+      <section class="manifesto" data-scene="machines" aria-labelledby="manifesto-title">
+        <div class="manifesto__pin">
+          <div class="wrap">
+            <h2 class="visually-hidden" id="manifesto-title">Машина уже ведёт счёт</h2>
+            <p class="manifesto__text" data-words>Машина уже ведёт счёт. Моточасы есть на&nbsp;приборной панели и&nbsp;в&nbsp;блоке двигателя, координаты&nbsp;— в&nbsp;трекере: у&nbsp;лесозаготовительной техники он обязателен с&nbsp;2025&nbsp;года<a class="ref" href="#ref-1" aria-label="Источник: статья 96.3 Лесного кодекса">¹</a>. Отсчёт сводит это в&nbsp;один кабинет.</p>
+          </div>
+          <div class="machine-caption" aria-hidden="true">
+            <span data-machine="0">экскаватор</span><span data-machine="1">лесовоз</span><span data-machine="2">трактор</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="ticker" role="region" aria-label="Классы техники в&nbsp;кабинете">
+        <p class="ticker__row" data-ticker>Харвестер · Форвардер · Трелёвочный трактор · Лесовоз · Трактор · Зерноуборочный комбайн · Кормоуборочный комбайн · Опрыскиватель · Экскаватор · Погрузчик · Бульдозер · Автогрейдер · Каток · Кран · Телескопический погрузчик · Карьерный самосвал · Грузовик · Буровой станок ·</p>
+      </div>
+
+      <!-- 3 · readout -->
+      <section class="readout" id="how" aria-labelledby="readout-title">
+        <div class="wrap">
+          <header class="section-head">
+            <p class="eyebrow"><span>01</span>Показания</p>
+            <h2 id="readout-title" class="h2" data-reveal>Четыре показателя. У&nbsp;каждого&nbsp;— источник и&nbsp;время.</h2>
+          </header>
+          <div class="cluster" data-cluster>
+            <article class="gauge gauge--hero">
+              <header><span class="gauge__name">Моточасы</span><span class="tag">из&nbsp;блока управления (CAN)</span></header>
+              <div class="drum" data-drum="03035.2" data-drum-to="03043.7">
+                <span class="drum__static">3&nbsp;035,2</span>
+                <span class="drum__unit">ч</span>
+              </div>
+              <footer><span class="fresh"><i></i>только что</span></footer>
+            </article>
+            <article class="gauge">
+              <header><span class="gauge__name">Пробег</span><span class="tag">по&nbsp;ГНСС</span></header>
+              <p class="gauge__value"><span data-count="1284.6" data-decimals="1">1&nbsp;284,6</span><small>км</small></p>
+              <footer><span class="fresh"><i></i>2&nbsp;мин назад</span></footer>
+            </article>
+            <article class="gauge">
+              <header><span class="gauge__name">Местоположение</span><span class="tag">трекер</span></header>
+              <p class="gauge__value gauge__value--coords">61,7849°&nbsp;с.&nbsp;ш.<br />34,3469°&nbsp;в.&nbsp;д.</p>
+              <footer><span class="fresh"><i></i>только что</span></footer>
+            </article>
+            <article class="gauge gauge--oil">
+              <header><span class="gauge__name">Масло</span><span class="tag">датчик уровня</span></header>
+              <p class="gauge__value"><span data-count="82" data-decimals="0">82</span><small>%</small></p>
+              <div class="meter" aria-hidden="true"><i style="--v: 0.82"></i></div>
+            </article>
+          </div>
+          <p class="note"><span class="note__mark">Пример показаний.</span> Кабинет выбирает самое свежее точное значение. Оценка показывается, только если она новее, и&nbsp;всегда со&nbsp;знаком&nbsp;≈.</p>
+        </div>
+      </section>
+
+      <!-- 4 · sources -->
+      <section class="sources" aria-labelledby="sources-title">
+        <div class="wrap sources__grid">
+          <header class="sources__head">
+            <p class="eyebrow"><span>02</span>Подключение</p>
+            <h2 id="sources-title" class="h2" data-reveal>Сначала&nbsp;— то, что уже стоит в&nbsp;машине</h2>
+            <p class="sources__aside">Новое оборудование&nbsp;— только если этих путей не&nbsp;хватает. Трекер с&nbsp;CAN нужен тому, кто хочет автоматические точные моточасы на&nbsp;машине без трекера.</p>
+          </header>
+          <ol class="paths" data-paths>
+            <svg class="paths__wire" viewBox="0 0 40 1000" preserveAspectRatio="none" aria-hidden="true"><path d="M20 0 V1000" /></svg>
+            <li class="path">
+              <span class="path__n">01</span>
+              <h3>Трекер уже стоит</h3>
+              <p>С&nbsp;1&nbsp;января 2025&nbsp;года он обязателен для лесозаготовительной техники. Подключаем платформу владельца или добавляем наш сервер вторым адресом в&nbsp;трекере.</p>
+              <p class="chips"><span>EGTS</span><span>Wialon IPS</span><span>Galileosky</span><span>ретрансляция</span></p>
+              <span class="path__cost">без затрат</span>
+            </li>
+            <li class="path">
+              <span class="path__n">02</span>
+              <h3>Платформа мониторинга</h3>
+              <p>АвтоГРАФ, Wialon, Traccar или стандарт ISO&nbsp;15143-3: доступ только на&nbsp;чтение&nbsp;— и&nbsp;машины владельца появляются в&nbsp;кабинете.</p>
+              <p class="chips"><span>АвтоГРАФ</span><span>Wialon</span><span>Traccar</span><span>ISO&nbsp;15143-3</span></p>
+              <span class="path__cost">без затрат</span>
+            </li>
+            <li class="path">
+              <span class="path__n">03</span>
+              <h3>Телефон в&nbsp;кабине</h3>
+              <p>Код из&nbsp;6&nbsp;цифр&nbsp;— и&nbsp;местоположение, пробег и&nbsp;работа двигателя пишутся даже без связи.</p>
+              <p class="code-demo" aria-hidden="true"><span>4</span><span>8</span><span>1</span><span>0</span><span>5</span><span>7</span></p>
+              <span class="path__cost">без затрат</span>
+            </li>
+            <li class="path">
+              <span class="path__n">04</span>
+              <h3>Показание счётчика</h3>
+              <p>Фото и&nbsp;число с&nbsp;приборной панели&nbsp;— эталон моточасов. Оценки между показаниями калибруются по&nbsp;нему.</p>
+              <span class="path__cost">без затрат</span>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- 5 · offline: fragment shader -->
+      <section class="offline" data-scene="offline" aria-labelledby="offline-title">
+        <div class="offline__pin">
+          <div class="wrap offline__grid">
+            <div>
+              <p class="eyebrow"><span>03</span>Без связи</p>
+              <h2 id="offline-title" class="h2" data-reveal>В&nbsp;лесу нет сети. Данные не&nbsp;теряются.</h2>
+              <p class="body">Точки копятся в&nbsp;памяти трекера или телефона и&nbsp;досылаются при выезде в&nbsp;зону сети, пока не&nbsp;исчерпан объём архива. Для каждой машины видно, насколько свежи данные.</p>
+            </div>
+            <div class="queue" aria-hidden="true">
+              <p class="queue__state" data-queue-state>на&nbsp;связи</p>
+              <p class="queue__count"><span data-queue>0</span><small>точек в&nbsp;памяти</small></p>
+            </div>
+            <dl class="stats">
+              <div><dt><span>0</span> из&nbsp;5&nbsp;425</dt><dd>точек потеряно на&nbsp;пути трекер → сервер</dd></div>
+              <div><dt><span>0</span> дублей</dt><dd>после повторной отправки архива</dd></div>
+            </dl>
+            <p class="method">Модельный стенд: имитатор машин передаёт данные реальными протоколами Galileosky, EGTS и&nbsp;Wialon IPS по&nbsp;TCP через шлюз в&nbsp;платформу. Проверка на&nbsp;смонтированной машине впереди.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6 · odometry -->
+      <section class="odometry" aria-labelledby="odo-title">
+        <div class="wrap">
+          <header class="section-head">
+            <p class="eyebrow"><span>04</span>Пробег</p>
+            <h2 id="odo-title" class="h2" data-reveal>Пробег, которому можно верить</h2>
+            <p class="body">Простое суммирование точек ГНСС накручивает километры: машина стоит, а&nbsp;пробег растёт. Устойчивая одометрия отсекает дрожание сигнала и&nbsp;повороты на&nbsp;месте.</p>
+          </header>
+          <div class="odo" data-odo>
+            <figure class="odo__plot" aria-hidden="true">
+              <svg viewBox="0 0 600 360" preserveAspectRatio="xMidYMid meet">
+                <g class="odo__grid"></g>
+                <path class="odo__naive" d="" />
+                <circle class="odo__true" cx="300" cy="180" r="7" />
+                <circle class="odo__halo" cx="300" cy="180" r="18" />
+              </svg>
+              <figcaption>
+                <span class="odo__legend odo__legend--naive">простое суммирование: <b data-odo-km>0,0</b>&nbsp;км</span>
+                <span class="odo__legend odo__legend--true">Отсчёт: <b>0,16</b>&nbsp;км</span>
+              </figcaption>
+            </figure>
+            <ul class="versus">
+              <li>
+                <p class="versus__what">Стоянка 72&nbsp;часа под пологом леса</p>
+                <p class="versus__nums"><s>до&nbsp;59&nbsp;км</s><b>≤&nbsp;0,16&nbsp;км</b></p>
+                <p class="versus__note">ложный пробег</p>
+              </li>
+              <li>
+                <p class="versus__what">Гусеничный экскаватор с&nbsp;поворотной платформой</p>
+                <p class="versus__nums"><s>от&nbsp;+906&nbsp;%</s><b>+0,6&nbsp;%</b></p>
+                <p class="versus__note">ошибка пробега</p>
+              </li>
+              <li>
+                <p class="versus__what">Грузовик и&nbsp;трактор</p>
+                <p class="versus__nums"><b>−0,3…−0,7&nbsp;%</b></p>
+                <p class="versus__note">ошибка пробега</p>
+              </li>
+            </ul>
+          </div>
+          <p class="method">Модельный стенд, синтетические маршруты. Сверка с&nbsp;эталоном на&nbsp;реальной машине&nbsp;— на&nbsp;пилоте.</p>
+        </div>
+      </section>
+
+      <!-- 7 · oil -->
+      <section class="oil" id="oil" aria-labelledby="oil-title">
+        <div class="wrap oil__grid">
+          <div class="oil__copy">
+            <p class="eyebrow"><span>05</span>Масло</p>
+            <h2 id="oil-title" class="h2" data-reveal>Масло&nbsp;— главное для FUCHS</h2>
+            <p class="body">Уровень, температура, давление, вода и&nbsp;состояние. Кабинет сам находит доливы и&nbsp;считает расход на&nbsp;100&nbsp;моточасов.</p>
+            <ul class="oil__facts">
+              <li>Многие электронные двигатели уже передают уровень, давление и&nbsp;температуру масла по&nbsp;CAN&nbsp;J1939&nbsp;— трекер с&nbsp;CAN читает их без новых датчиков.</li>
+              <li>Воду и&nbsp;состояние масла добавляют датчики с&nbsp;Modbus&nbsp;RTU или J1939.</li>
+            </ul>
+            <p class="chips"><span>SPN&nbsp;98 · уровень</span><span>SPN&nbsp;100 · давление</span><span>SPN&nbsp;175 · температура</span><span>Modbus&nbsp;RTU</span></p>
+            <p class="method">Приём и&nbsp;аналитика работают; проверка на&nbsp;физическом датчике впереди.</p>
+          </div>
+          <figure class="tube" data-tube aria-label="Пример показаний масла">
+            <div class="tube__glass">
+              <svg class="tube__oil" viewBox="0 0 200 520" preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                  <linearGradient id="oilg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2c15b" /><stop offset="1" stop-color="#9c5a12" /></linearGradient>
+                </defs>
+                <path data-oil-path d="M0 200 H200 V520 H0 Z" fill="url(#oilg)" />
+              </svg>
+              <span class="tube__mark tube__mark--max">max</span>
+              <span class="tube__mark tube__mark--min">min</span>
+              <span class="tube__topup" data-topup>долив +12&nbsp;п.&nbsp;п.</span>
+            </div>
+            <dl class="tube__read">
+              <div><dt>уровень</dt><dd><span data-oil-level>70</span>&nbsp;%</dd></div>
+              <div><dt>температура</dt><dd>88&nbsp;°C</dd></div>
+              <div><dt>давление</dt><dd>3,4&nbsp;бар</dd></div>
+              <div><dt>вода</dt><dd>120&nbsp;ppm</dd></div>
+            </dl>
+            <figcaption>пример показаний · двигайте курсором</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- 8 · roles and privacy -->
+      <section class="roles" aria-labelledby="roles-title">
+        <div class="wrap roles__grid">
+          <div class="rings" data-rings aria-hidden="true">
+            <div class="ring ring--1"><span>FUCHS</span></div>
+            <div class="ring ring--2"><span>дистрибьютор</span></div>
+            <div class="ring ring--3"><span>клиент</span></div>
+          </div>
+          <div>
+            <p class="eyebrow"><span>06</span>Доступ</p>
+            <h2 id="roles-title" class="h2" data-reveal>Каждый видит своё</h2>
+            <p class="body">FUCHS видит всю сеть, дистрибьютор&nbsp;— своих клиентов, клиент&nbsp;— себя.</p>
+            <ul class="ticks">
+              <li>Вход&nbsp;— по&nbsp;логину от&nbsp;администратора организации. Имена, телефоны и&nbsp;почта водителей не&nbsp;нужны.</li>
+              <li>Главный администратор владельца отключает координаты любой машины.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- 9 · download -->
+      <section class="download" id="download" aria-labelledby="dl-title">
+        <div class="wrap">
+          <header class="section-head">
+            <p class="eyebrow"><span>07</span>Приложения</p>
+            <h2 id="dl-title" class="h2" data-reveal>Кабинет&nbsp;— там, где удобно</h2>
+          </header>
+          <div class="platforms">
+            <a class="platform" href="https://github.com/mikhailsilva/horisont/releases/download/native-0.3.3-2026.09.25/itles-android-debug.apk">
+              <span class="platform__os">Android</span><span class="platform__ver">0.3.3 · тестовая</span>
+              <span class="platform__note">Android 7+, debug-подпись. Не&nbsp;обновляет старый release APK поверх установки. Не&nbsp;удаляйте приложение с&nbsp;несинхронизированными данными. На&nbsp;телефоне не&nbsp;проверено.</span>
+              <span class="platform__go" aria-hidden="true">↓</span>
+            </a>
+            <a class="platform" href="https://github.com/mikhailsilva/horisont/releases/download/native-0.3.3-2026.09.25/ITles-Windows-x64-0.3.3.zip">
+              <span class="platform__os">Windows</span><span class="platform__ver">0.3.3</span>
+              <span class="platform__note">Windows 10/11 x64: распакуйте ZIP и&nbsp;запустите ITles.exe. Без цифровой подписи; на&nbsp;реальном Windows не&nbsp;проверено.</span>
+              <span class="platform__go" aria-hidden="true">↓</span>
+            </a>
+            <a class="platform" href="./app/">
+              <span class="platform__os">iPhone и&nbsp;iPad</span><span class="platform__ver">веб-приложение</span>
+              <span class="platform__note">Кабинет: Safari → «Поделиться» → «На&nbsp;экран Домой». Для GPS в&nbsp;фоне&nbsp;— Traccar Client из&nbsp;App Store.</span>
+              <span class="platform__go" aria-hidden="true">→</span>
+            </a>
+            <a class="platform" href="./app/">
+              <span class="platform__os">Веб-кабинет</span><span class="platform__ver">любой браузер</span>
+              <span class="platform__note">Без установки.</span>
+              <span class="platform__go" aria-hidden="true">→</span>
+            </a>
+          </div>
+          <p class="method">Приложения пока называются ITles&nbsp;— это прежнее имя Отсчёта. Архивные сборки 24.09.2026 перенесены без пересборки, они старше текущих исходников и&nbsp;не&nbsp;проверены на&nbsp;реальных устройствах: <a href="https://github.com/mikhailsilva/horisont/releases/tag/android-2026.09.24">Android</a>, <a href="https://github.com/mikhailsilva/horisont/releases/tag/desktop-2026.09.24">Windows</a>.</p>
+        </div>
+      </section>
+
+      <!-- 10 · questions + final call -->
+      <section class="faq" aria-labelledby="faq-title">
+        <div class="wrap faq__grid">
+          <h2 id="faq-title" class="h2">Вопросы</h2>
+          <div class="qa">
+            <details>
+              <summary>Нужно ли покупать оборудование?</summary>
+              <p>Нет, если в&nbsp;машине есть трекер (для лесозаготовительной техники он обязателен) или можно оставить в&nbsp;кабине телефон. Датчики состояния масла докупаются только тем, кому нужен анализ масла на&nbsp;ходу.</p>
+            </details>
+            <details>
+              <summary>Что, если в&nbsp;лесу нет связи?</summary>
+              <p>Данные копятся в&nbsp;памяти трекера или телефона и&nbsp;досылаются при выезде в&nbsp;зону сети, пока не&nbsp;исчерпан объём архива. У&nbsp;каждой машины видна свежесть данных; там, где связи нет, онлайн-обновлений не&nbsp;бывает.</p>
+            </details>
+            <details>
+              <summary>Собираете ли вы персональные данные?</summary>
+              <p>Для входа достаточно логина: имена, телефоны и&nbsp;почта водителей не&nbsp;нужны. Владелец может запретить приём координат; правовой режим геоданных нужно оценить до&nbsp;реального пилота.</p>
+            </details>
+            <details>
+              <summary>Какие датчики масла подходят?</summary>
+              <p>Уровень, давление и&nbsp;температура&nbsp;— из&nbsp;CAN двигателя (J1939 SPN&nbsp;98/100/175) или датчиками уровня; вода и&nbsp;состояние масла&nbsp;— датчиками с&nbsp;Modbus RTU или J1939 через RS-485/CAN трекера.</p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <section class="final" data-scene="final" aria-labelledby="final-title">
+        <div class="wrap final__inner">
+          <h2 id="final-title" class="final__title">Отсчёт пошёл.</h2>
+          <p class="lead">Подключите первую машину тем, что уже есть: трекером, платформой или телефоном.</p>
+          <div class="cta-row cta-row--center">
+            <a class="btn btn--signal btn--lg" href="./app/">Открыть кабинет <span class="btn__arrow" aria-hidden="true">→</span></a>
+            <a class="btn btn--ghost btn--lg" href="./app/#/cab">Телефон в&nbsp;кабине</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div class="wrap foot__grid">
+        <a class="foot__brand" href="#top" aria-label="Отсчёт&nbsp;— в&nbsp;начало страницы" data-logo></a>
+        <p>© <span data-year>2026</span> Отсчёт · мониторинг спецтехники</p>
+        <p id="ref-1" class="foot__ref">¹ Часть&nbsp;1 статьи&nbsp;96.3 Лесного кодекса РФ: с&nbsp;1&nbsp;января 2025&nbsp;года лесозаготовительная техника и&nbsp;лесовозы оснащаются аппаратурой спутниковой навигации.</p>
+        <p class="foot__ref">Карта в&nbsp;кабинете: OpenFreeMap © OpenMapTiles, данные © OpenStreetMap</p>
+      </div>
+    </footer>
+
+    <script type="module" src="./src/landing/main.ts"></script>
   </body>
 </html>

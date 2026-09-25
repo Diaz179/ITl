@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { AlertCircle, X } from 'lucide-react';
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 // MapLibre v6 loads its worker from a sibling file; let Vite bundle it (with the shared chunk) and pass the URL.
@@ -11,20 +12,47 @@ export function Fresh({ f, t }: { f: string; t: number | null }) {
     f === 'online' ? 'bg-success/10 text-success' : f === 'recent' ? 'bg-warning/10 text-warning' : f === 'stale' ? 'bg-danger/10 text-danger' : 'bg-muted text-muted-foreground';
   const dot = f === 'online' ? 'bg-success' : f === 'recent' ? 'bg-warning' : f === 'stale' ? 'bg-danger' : 'bg-muted-foreground';
   return (
-    <span className={`badge ${cls}`} title={t ? new Date(t).toLocaleString('ru-RU') : ''}>
-      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} /> {ago(t)}
+    <span className={`badge whitespace-nowrap ${cls}`} title={t ? new Date(t).toLocaleString('ru-RU') : ''}>
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} aria-hidden="true" /> {ago(t)}
     </span>
   );
 }
 
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  const titleId = useId();
+  const panel = useRef<HTMLDivElement>(null);
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    panel.current?.focus({ preventScroll: true });
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close.current();
+    addEventListener('keydown', onKey);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      removeEventListener('keydown', onKey);
+      document.body.style.overflow = overflow;
+      previous?.focus?.({ preventScroll: true });
+    };
+  }, []);
   return (
-    <div className="fixed inset-0 z-[2000] flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center" onClick={onClose}>
-      <div className="card w-full max-w-lg p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">{title}</h3>
-          <button className="text-2xl leading-none text-muted-foreground hover:text-foreground" onClick={onClose} aria-label="Закрыть">
-            ×
+    <div className="backdrop-in fixed inset-0 z-[2000] flex items-end justify-center bg-black/55 backdrop-blur-[3px] sm:items-center sm:p-4" onClick={onClose}>
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="card dialog-in max-h-[92svh] w-full max-w-lg overflow-y-auto rounded-b-none px-5 pt-5 pb-[max(20px,env(safe-area-inset-bottom))] shadow-[var(--shadow-pop)] outline-none sm:rounded-b-[16px] sm:p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <h3 id={titleId} className="min-w-0 pt-1 text-lg leading-snug font-bold break-words">
+            {title}
+          </h3>
+          <button className="-mt-1 -mr-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" onClick={onClose} aria-label="Закрыть">
+            <X className="h-[18px] w-[18px]" strokeWidth={1.75} />
           </button>
         </div>
         {children}
@@ -35,7 +63,12 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
 
 export function ErrorLine({ e }: { e: unknown }) {
   if (!e) return null;
-  return <div className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{(e as Error).message ?? String(e)}</div>;
+  return (
+    <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-danger/25 bg-danger/10 px-3.5 py-2.5 text-sm text-danger">
+      <AlertCircle className="mt-px h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />
+      <span className="min-w-0 break-words">{(e as Error).message ?? String(e)}</span>
+    </div>
+  );
 }
 
 export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): { data: T | null; error: unknown; loading: boolean; reload: () => void } {
