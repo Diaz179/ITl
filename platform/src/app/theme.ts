@@ -19,7 +19,7 @@ export function setTheme(t: Theme, persist = true) {
     // private mode: keep in memory only
   }
   document.documentElement.classList.toggle('dark', t === 'dark');
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'dark' ? '#0b0c0a' : '#f3f1ea');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'dark' ? '#0a0907' : '#f2ebdd');
   window.dispatchEvent(new CustomEvent('itles-theme', { detail: t }));
   if (persist) savePreferences({ theme: t });
 }

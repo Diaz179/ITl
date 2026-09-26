@@ -14,22 +14,39 @@ function BrandPanel() {
       <a href="../" className="relative z-10 w-fit rounded-lg" aria-label="Отсчёт — на главную">
         <BrandLockup size={30} knockout="var(--bg)" />
       </a>
-      <svg className="pointer-events-none absolute top-[44%] left-1/2 w-[min(64vh,560px)] -translate-x-[34%] -translate-y-1/2 opacity-90" viewBox="0 0 400 400" aria-hidden="true">
+      <svg className="pointer-events-none absolute top-[44%] left-1/2 w-[min(64vh,560px)] -translate-x-[34%] -translate-y-1/2" viewBox="0 0 400 400" aria-hidden="true">
+        <defs>
+          {/* bone ceramic lit from the upper left, like the ring in the film */}
+          <linearGradient id="login-ceramic" x1="0.15" y1="0.1" x2="0.85" y2="0.95">
+            <stop offset="0" stopColor="#fbf6ec" />
+            <stop offset="0.55" stopColor="#f2ebdd" />
+            <stop offset="1" stopColor="#c9bba1" />
+          </linearGradient>
+          <radialGradient id="login-dot-glow">
+            <stop offset="0" style={{ stopColor: 'var(--signal-graphic)', stopOpacity: 0.42 }} />
+            <stop offset="1" style={{ stopColor: 'var(--signal-graphic)', stopOpacity: 0 }} />
+          </radialGradient>
+        </defs>
         {TICKS.map((i) => {
           const a = (i / 60) * Math.PI * 2;
           const long = i % 5 === 0;
           const r1 = long ? 176 : 181;
-          return <line key={i} x1={200 + Math.sin(a) * r1} y1={200 - Math.cos(a) * r1} x2={200 + Math.sin(a) * 188} y2={200 - Math.cos(a) * 188} stroke="var(--line-strong)" strokeWidth={long ? 2 : 1} />;
+          return <line key={i} x1={200 + Math.sin(a) * r1} y1={200 - Math.cos(a) * r1} x2={200 + Math.sin(a) * 188} y2={200 - Math.cos(a) * 188} stroke={long ? 'var(--accent-gold)' : 'var(--line-strong)'} strokeOpacity={long ? 0.75 : 1} strokeWidth={long ? 2 : 1} />;
         })}
-        <circle cx="200" cy="200" r="118" fill="none" stroke="currentColor" strokeWidth="50" opacity="0.94" />
+        <circle cx="200" cy="200" r="118" fill="none" stroke="url(#login-ceramic)" strokeWidth="50" />
         <g className="login-orbit">
+          <circle cx="200" cy="82" r="100" fill="url(#login-dot-glow)" />
           <circle cx="200" cy="82" r="56" fill="var(--bg)" />
           <circle cx="200" cy="82" r="40" fill="var(--signal-graphic)" />
         </g>
       </svg>
       <div className="relative z-10 max-w-md">
-        <p className="eyebrow mb-4">Кабинет</p>
+        <p className="eyebrow mb-4" style={{ color: 'var(--accent-gold)' }}>
+          Кабинет
+        </p>
         <p className="text-[clamp(2.4rem,3.6vw,3.6rem)] leading-[0.95] font-extrabold tracking-[-0.045em]">Техника на&nbsp;связи.</p>
+        {/* «плёнка»: the temper colours of the film's facets */}
+        <div className="mt-5 h-[3px] w-40 rounded-full bg-[linear-gradient(90deg,#ecc587,#d6994c_22%,#b86440_40%,#943277_58%,#6d43ae_72%,#4d79d8_88%,#4aaaf0)]" aria-hidden="true" />
         <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-[var(--fg-2)]">Моточасы, пробег, местоположение и&nbsp;масло&nbsp;— из&nbsp;того, что уже стоит в&nbsp;машине.</p>
         <p className="eyebrow mt-8">трекер · платформа · телефон · счётчик</p>
       </div>

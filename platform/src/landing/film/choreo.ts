@@ -198,24 +198,26 @@ export interface Cam {
   sx: number;
   sy: number;
 }
-type Key = Cam & { t: number; dm: number; syM: number };
-const K = (t: number, target: V3, dist: number, az: number, el: number, fov: number, sx: number, sy: number, dm: number, syM: number): Key => ({ t, target, dist, az: az * DEG, el: el * DEG, fov: fov * DEG, sx, sy, dm, syM });
+/** dm, syM, azM: portrait-only distance multiplier, vertical view centre and azimuth offset (degrees). */
+type Key = Cam & { t: number; dm: number; syM: number; azM: number };
+const K = (t: number, target: V3, dist: number, az: number, el: number, fov: number, sx: number, sy: number, dm: number, syM: number, azM = 0): Key => ({ t, target, dist, az: az * DEG, el: el * DEG, fov: fov * DEG, sx, sy, dm, syM, azM: azM * DEG });
 const KEYS: Key[] = [
   K(0, [0, 0, 0], 3.6, -7, 2, 30, 0.46, -0.02, 1.9, 0.36),
   K(2.6, [0, 0, 0], 4.2, 0, 4, 30, 0.47, -0.03, 1.95, 0.38),
   K(3.5, [0, 0, 0], 4.2, 1, 4, 30, 0.47, -0.03, 1.95, 0.38),
   // the dial: whole bezel and the index dot in frame, a slow push-in while the wheels count
-  K(4.7, [0, 0, 0], 4.75, 0, 0, 30, 0.33, -0.055, 1.85, 0.34),
-  K(6.8, [0, 0, 0], 4.6, 0, 0, 30, 0.33, -0.055, 1.85, 0.34),
+  K(4.7, [0, 0, 0], 4.75, 0, 0, 30, 0.33, -0.055, 2.3, 0.42),
+  K(6.8, [0, 0, 0], 4.6, 0, 0, 30, 0.33, -0.055, 2.3, 0.42),
   // the shell: wider lens and a three-quarter angle, so near and far facets differ in scale
-  K(8.25, [0, 0.05, 0], 5.3, 18, 24, 38, 0.2, -0.02, 1.7, 0.28),
-  K(8.9, [0, 0.05, 0], 5.15, 22, 22, 38, 0.2, -0.02, 1.7, 0.28),
+  K(8.25, [0, 0.05, 0], 5.3, 18, 24, 38, 0.2, -0.02, 2.15, 0.34),
+  K(8.9, [0, 0.05, 0], 5.15, 22, 22, 38, 0.2, -0.02, 2.15, 0.34),
   // the machine: low hero angle, slow orbit round the front quarter
-  K(10.1, [0, 0.02, 0], 4.75, 33, 14, 40, 0.27, -0.05, 1.75, 0.26),
-  K(11.0, [0, 0.02, 0], 4.6, 50, 16, 40, 0.27, -0.05, 1.75, 0.26),
-  K(12.5, [3.0, -0.8, -0.5], 11, 4, 47, 34, 0.1, -0.14, 1.55, 0.12),
-  K(14.8, [3.8, -0.8, -0.9], 10.6, 9, 49, 34, 0.1, -0.14, 1.55, 0.12),
-  K(15.4, [5.8, 0.5, -1.9], 8.5, 9, 22, 34, 0.1, -0.05, 1.55, 0.2),
+  K(10.1, [0, 0.02, 0], 4.75, 33, 14, 40, 0.27, -0.05, 2.3, 0.36),
+  K(11.0, [0, 0.02, 0], 4.6, 50, 16, 40, 0.27, -0.05, 2.3, 0.36),
+  // on a phone the route turns into depth: the machine drives up the screen, into the coverage
+  K(12.5, [3.0, -0.8, -0.5], 11, 4, 47, 34, 0.1, -0.14, 1.3, 0.4, -58),
+  K(14.8, [3.8, -0.8, -0.9], 10.6, 9, 49, 34, 0.1, -0.14, 1.3, 0.4, -58),
+  K(15.4, [5.8, 0.5, -1.9], 8.5, 9, 22, 34, 0.1, -0.05, 1.55, 0.2, -58),
   K(17.3, [0, 0, 0], 4.7, 0, 4, 30, 0.5, -0.02, 1.95, 0.38),
   K(19.0, [0, 0, 0], 4.7, 0, 4, 30, 0.5, -0.02, 1.95, 0.38),
 ];
@@ -230,7 +232,7 @@ function tangents(vals: number[], ts: number[]): number[] {
   });
 }
 
-const channels = ['dist', 'az', 'el', 'fov', 'sx', 'sy', 'dm', 'syM', 't0', 't1', 't2'] as const;
+const channels = ['dist', 'az', 'el', 'fov', 'sx', 'sy', 'dm', 'syM', 'azM', 't0', 't1', 't2'] as const;
 const series: Record<string, { v: number[]; m: number[] }> = {};
 {
   const ts = KEYS.map((k) => k.t);
@@ -258,7 +260,7 @@ export function cameraAt(T: number, portrait: boolean): Cam {
   return {
     target: [sample('t0', T), sample('t1', T), sample('t2', T)],
     dist: sample('dist', T) * dm,
-    az: sample('az', T),
+    az: sample('az', T) + (portrait ? sample('azM', T) : 0),
     el: sample('el', T),
     fov: sample('fov', T),
     sx: portrait ? 0 : sample('sx', T),

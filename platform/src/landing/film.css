@@ -1222,6 +1222,7 @@ html:not(.film) .stage,
 html:not(.film) .track,
 html:not(.film) .hint,
 html:not(.film) .dial-unit,
+html:not(.film) .dial-note,
 html:not(.film) .tag-follow,
 html:not(.film) .topup {
   display: none;
@@ -1300,6 +1301,10 @@ html:not(.film) .details__panel {
     bottom: calc(74px + env(safe-area-inset-bottom));
   }
   .film .s5 .copy {
+    width: auto;
+  }
+  .film .s2 .copy,
+  .film .s3 .copy {
     width: auto;
   }
   .film .s4::before {

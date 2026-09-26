@@ -13,7 +13,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1360,
     height: 900,
-    title: 'ITles',
+    title: 'Отсчёт',
     backgroundColor: '#000000',
     icon: path.join(__dirname, 'icon.ico'),
     webPreferences: { contextIsolation: true, sandbox: true },

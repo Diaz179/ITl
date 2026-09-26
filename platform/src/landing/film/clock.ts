@@ -26,13 +26,15 @@ export class Playhead {
   }
 
   update(dtReal: number) {
-    const dt = Math.min(dtReal, 1 / 20);
     if (this.autoplay && this.t < INTRO_END && this.target <= INTRO_END + 1e-6) {
+      // the intro is not scroll-driven: it keeps real time even at a few frames per second,
+      // so the hero is never held back on a slow device
       this.v = 1;
-      this.t = Math.min(INTRO_END, this.t + dt);
+      this.t = Math.min(INTRO_END, this.t + Math.min(dtReal, 0.25));
       if (this.t >= INTRO_END) this.v = 0;
       return;
     }
+    const dt = Math.min(dtReal, 1 / 20);
     this.autoplay = false;
     const e = this.target - this.t;
     if (Math.abs(e) < 2e-4 && Math.abs(this.v) < 2e-3) {

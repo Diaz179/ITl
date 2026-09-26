@@ -250,7 +250,11 @@ export class Stage {
   resize(portrait: boolean) {
     const cssW = this.canvas.clientWidth || innerWidth;
     const cssH = this.canvas.clientHeight || innerHeight;
-    const scale = this.opts.dpr * this.renderScale;
+    let scale = this.opts.dpr * this.renderScale;
+    // pixel budget: a huge or very tall surface (a 5K screen, a full-page capture) must not allocate a giant HDR + MSAA target
+    const budget = 5e6;
+    const px = cssW * cssH * scale * scale;
+    if (px > budget) scale *= Math.sqrt(budget / px);
     const w = Math.max(2, Math.round(cssW * scale));
     const h = Math.max(2, Math.round(cssH * scale));
     this.portrait = portrait;
@@ -488,10 +492,10 @@ export class Stage {
   /** Pixel geometry of the oil vial and the falling drop. */
   private oilLayout(T: number) {
     const W = this.width, H = this.height;
-    const vw = this.portrait ? H * 0.13 : H * 0.17;
-    const vh = this.portrait ? H * 0.36 : H * 0.62;
+    const vw = this.portrait ? H * 0.105 : H * 0.17;
+    const vh = this.portrait ? H * 0.29 : H * 0.62;
     const cx = this.portrait ? W * 0.5 : W * 0.71;
-    const cy = this.portrait ? H * 0.64 : H * 0.47;
+    const cy = this.portrait ? H * 0.715 : H * 0.47;
     const s = this.width / Math.max(1, this.cssW);
     this.vial = { x: (cx - vw / 2) / s, y: (H - cy - vh / 2) / s, w: vw / s, h: vh / s };
     return { vw, vh, cx, cy };

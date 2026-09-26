@@ -73,11 +73,13 @@ export class TypeLayer {
     for (const el of Array.from(root.querySelectorAll<HTMLElement>('[data-fx]'))) this.register(el);
     for (const s of Array.from(root.querySelectorAll<HTMLElement>('.scene'))) {
       const own = this.fx.filter((f) => f.el.closest('.scene') === s);
-      const a = Math.min(...own.map((f) => f.tin)) - 0.15;
+      // the opening scene is on from the first frame, so its heading is in the accessibility tree at once
+      const a = s.dataset.scene === '1' ? -1 : Math.min(...own.map((f) => f.tin)) - 0.15;
       const outs = own.map((f) => f.tout);
       const b = Math.max(...outs) + 0.9;
       const lastIn = Math.max(...own.filter((f) => f.el.matches('.cta, .get, .more, [data-fx=fade]')).map((f) => f.tin), a);
-      this.scenes.push({ el: s, copy: s.querySelector('.copy'), a, b, liveA: lastIn + 0.2, liveB: Math.min(...outs), shown: true });
+      // CSS starts every scene hidden; `shown: false` makes the first update write the real state
+      this.scenes.push({ el: s, copy: s.querySelector('.copy'), a, b, liveA: lastIn + 0.2, liveB: Math.min(...outs), shown: false });
     }
   }
 
@@ -106,6 +108,8 @@ export class TypeLayer {
         break;
       case 'rise': {
         const words = splitWords(el);
+        // headings stay readable to assistive tech: the word masks hide them visually, not `visibility`
+        el.style.visibility = 'inherit';
         make((T) => {
           let ex = 0;
           words.forEach((w, i) => {
@@ -116,7 +120,6 @@ export class TypeLayer {
             w.style.transform = `translate3d(0, ${(1 - p) * 112 - e * 112}%, 0) rotate(${(1 - p) * 8}deg)`;
           });
           el.style.filter = ex > 0.01 ? `blur(${ex * 6}px)` : '';
-          el.style.visibility = T < tin || ex >= 1 ? 'hidden' : 'visible';
         });
         break;
       }
@@ -213,7 +216,9 @@ export class TypeLayer {
           if (!s) return;
           const level = OIL.level(T);
           const lv = 0.12 + level * 0.0068;
-          const x = s.vial.x + s.vial.w + 14;
+          // right of the vial, or left of it when a narrow screen would clip the tag
+          let x = s.vial.x + s.vial.w + 14;
+          if (x + el.offsetWidth > s.cssW - 8) x = s.vial.x - 14 - el.offsetWidth;
           const y = s.vial.y + s.vial.h * (1 - lv);
           el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(0, -50%) scale(${0.6 + 0.4 * p})`;
           el.style.opacity = String(clamp01(p) * (1 - q));
@@ -277,6 +282,8 @@ export class TypeLayer {
     const words = (el.dataset.words ?? '').split('|').map((w) => w.toUpperCase());
     const at = (el.dataset.at ?? '').split('|').map(Number);
     const n = Math.max(...words.map((w) => w.length));
+    // the static word is the document-mode fallback; the board replaces it
+    el.textContent = '';
     const cells: Array<{ c: HTMLElement; t: HTMLElement; b: HTMLElement; lt: HTMLElement; lb: HTMLElement; lti: HTMLElement; lbi: HTMLElement; ti: HTMLElement; bi: HTMLElement; state: string }> = [];
     const mk = (cls: string) => {
       const h = document.createElement('span');
@@ -313,7 +320,7 @@ export class TypeLayer {
           c.lti.textContent = prev;
           c.lbi.textContent = next;
           // unused cells of the board go dark instead of showing empty tiles
-          c.c.classList.toggle('is-blank', prev === ' ' && next === ' ');
+          c.c.classList.toggle('is-blank', next === ' ' && (f >= 1 || prev === ' '));
           c.state = key;
         }
         if (f >= 1 || j < 0) {
@@ -381,7 +388,9 @@ export class TypeLayer {
       const q = inCubic(range(T, tout, tout + 0.4));
       const dot = s.dotAt(T);
       const pt = s.project(dot.pos);
-      el.style.transform = `translate3d(${pt[0] + 18}px, ${pt[1] - 18}px, 0) translate(0, -100%)`;
+      // keep the tag on screen: flip to the machine's left near the right edge
+      const tx = pt[0] + 18 + el.offsetWidth > s.cssW - 8 ? pt[0] - 18 - el.offsetWidth : pt[0] + 18;
+      el.style.transform = `translate3d(${tx}px, ${pt[1] - 18}px, 0) translate(0, -100%)`;
       el.style.opacity = String(clamp01(p) * (1 - q));
       el.style.visibility = p <= 0 || q >= 1 ? 'hidden' : 'visible';
       const n = s.storedAt(T);

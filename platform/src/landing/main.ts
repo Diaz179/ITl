@@ -145,7 +145,8 @@ async function startFilm() {
   let manual: { T: number; time: number } | null = null;
 
   function render(now: number) {
-    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+    const dtRaw = Math.min(0.25, Math.max(0, (now - last) / 1000));
+    const dt = Math.min(0.05, dtRaw);
     last = now;
     let T: number;
     let prevMix = 0;
@@ -163,7 +164,7 @@ async function startFilm() {
       if (fadeStart >= 0) prevMix = Math.max(0, 1 - (now - fadeStart) / 350);
     } else {
       playhead.target = filmAt(progress());
-      if (!paused) playhead.update(dt);
+      if (!paused) playhead.update(dtRaw);
       T = playhead.t;
     }
     // secondary motion: text leans with the playhead's speed, oil sloshes with its acceleration

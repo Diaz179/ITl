@@ -35,7 +35,7 @@ export function wordmarkSvg(opts: { className?: string; title?: string } = {}): 
     `<svg class="${opts.className ?? ''}" viewBox="${WORDMARK.viewBox}" ${label} focusable="false">` +
     `<g fill="none" stroke="currentColor"><path d="${verticals}" stroke-width="22"/><path d="${horizontals}" stroke-width="19"/></g>` +
     `<circle cx="${dots.x[0]}" cy="${dots.y}" r="${dots.r}" fill="currentColor"/>` +
-    `<circle cx="${dots.x[1]}" cy="${dots.y}" r="${dots.r}" fill="var(--signal-graphic, #ff5a1f)"/></svg>`
+    `<circle cx="${dots.x[1]}" cy="${dots.y}" r="${dots.r}" fill="var(--signal-graphic, #ff4a14)"/></svg>`
   );
 }
 
@@ -45,7 +45,7 @@ export function symbolSvg(opts: { className?: string; title?: string; knockout?:
   return (
     `<svg class="${opts.className ?? ''}" viewBox="0 0 64 64" ${label} focusable="false">` +
     `<circle cx="${s.cx}" cy="${s.cy}" r="${s.r}" fill="none" stroke="currentColor" stroke-width="${s.stroke}"/>` +
-    `<g class="dot-group"><circle cx="${s.dot.cx}" cy="${s.dot.cy}" r="${s.dot.r + s.dot.gap}" fill="${opts.knockout ?? 'var(--bg, #0b0c0a)'}"/>` +
-    `<circle cx="${s.dot.cx}" cy="${s.dot.cy}" r="${s.dot.r}" fill="var(--signal-graphic, #ff5a1f)"/></g></svg>`
+    `<g class="dot-group"><circle cx="${s.dot.cx}" cy="${s.dot.cy}" r="${s.dot.r + s.dot.gap}" fill="${opts.knockout ?? 'var(--bg, #0a0907)'}"/>` +
+    `<circle cx="${s.dot.cx}" cy="${s.dot.cy}" r="${s.dot.r}" fill="var(--signal-graphic, #ff4a14)"/></g></svg>`
   );
 }

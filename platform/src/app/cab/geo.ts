@@ -83,7 +83,7 @@ function nativeProvider(n: NativeGeo): GeoProvider {
     name: 'приложение Android (фоновая служба)',
     background: true,
     start(onFix, onError) {
-      n.addWatcher({ backgroundTitle: 'ITles: запись маршрута', backgroundMessage: 'Координаты передаются диспетчеру', distanceFilter: 0 }, (loc, err) => {
+      n.addWatcher({ backgroundTitle: 'Отсчёт: запись маршрута', backgroundMessage: 'Координаты передаются диспетчеру', distanceFilter: 0 }, (loc, err) => {
         if (err) onError({ code: /permission/i.test(err.message) ? 1 : 2, message: err.message });
         else if (loc) onFix(loc);
       })

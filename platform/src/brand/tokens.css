@@ -28,11 +28,12 @@
 }
 
 :root {
-  /* palette: «графит», «калька», «сурик», «лишайник» */
-  --graphite: #0b0c0a;
-  --paper: #f3f1ea;
-  --surik: #ff5a1f;
-  --surik-deep: #bd3608;
+  /* palette «Чёрное золото»: «мазут», «кость», «сурик», «золото»; «лишайник» stays for charts */
+  --graphite: #0a0907;
+  --paper: #f2ebdd;
+  --surik: #ff4a14;
+  --surik-deep: #c2330a;
+  --gold: #d6a84e;
   --lichen: #9bb5a6;
 
   --font-sans: 'Onest', 'Onest Fallback', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -51,41 +52,43 @@
   --dur-3: 320ms;
 
   /* day theme */
-  --bg: #f3f1ea;
-  --bg-raised: #fbfaf6;
-  --bg-sunken: #eae7de;
-  --bg-hover: #ebe8df;
-  --fg: #0d0e0c;
-  --fg-2: #3f403a;
-  --fg-3: #66665d;
-  --line: rgb(13 14 12 / 0.1);
-  --line-strong: rgb(13 14 12 / 0.2);
-  --signal: #bd3608;
+  --bg: #f2ebdd;
+  --bg-raised: #fbf8f1;
+  --bg-sunken: #e9e2d4;
+  --bg-hover: #ebe4d6;
+  --fg: #0e0c09;
+  --fg-2: #423d35;
+  --fg-3: #6b6458;
+  --line: rgb(14 12 9 / 0.1);
+  --line-strong: rgb(14 12 9 / 0.2);
+  --signal: #c2330a;
   --signal-fg: #ffffff;
-  --signal-graphic: #ff5a1f;
+  --signal-graphic: #ff4a14;
+  --accent-gold: #7a5c17;
   --ok: #13804a;
   --warn: #9a5b00;
   --bad: #c8243f;
   --info: #1f5fbf;
   --chart-2: #5e7a6b;
-  --shadow-pop: 0 1px 0 rgb(255 255 255 / 0.6) inset, 0 12px 32px -12px rgb(13 14 12 / 0.28), 0 2px 6px -2px rgb(13 14 12 / 0.12);
-  --shadow-card: 0 1px 2px rgb(13 14 12 / 0.05);
+  --shadow-pop: 0 1px 0 rgb(255 255 255 / 0.6) inset, 0 12px 32px -12px rgb(14 12 9 / 0.28), 0 2px 6px -2px rgb(14 12 9 / 0.12);
+  --shadow-card: 0 1px 2px rgb(14 12 9 / 0.05);
   color-scheme: light;
 }
 
 .dark {
-  --bg: #0b0c0a;
-  --bg-raised: #141612;
-  --bg-sunken: #070806;
-  --bg-hover: #1d1f1b;
-  --fg: #f3f1ea;
-  --fg-2: #bdbbb2;
-  --fg-3: #97958b;
-  --line: rgb(243 241 234 / 0.09);
-  --line-strong: rgb(243 241 234 / 0.17);
-  --signal: #ff5a1f;
-  --signal-fg: #0b0c0a;
-  --signal-graphic: #ff5a1f;
+  --bg: #0a0907;
+  --bg-raised: #15120e;
+  --bg-sunken: #060504;
+  --bg-hover: #1f1b16;
+  --fg: #f2ebdd;
+  --fg-2: #c2b9a8;
+  --fg-3: #9a9180;
+  --line: rgb(242 235 221 / 0.09);
+  --line-strong: rgb(242 235 221 / 0.17);
+  --signal: #ff4a14;
+  --signal-fg: #0a0907;
+  --signal-graphic: #ff4a14;
+  --accent-gold: #d6a84e;
   --ok: #3dd68c;
   --warn: #f5b83d;
   --bad: #ff5c7a;
