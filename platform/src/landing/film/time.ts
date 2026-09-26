@@ -9,6 +9,7 @@ export const INTRO_END = 2.6;
 export const HOLDS: ReadonlyArray<readonly [number, number]> = [
   [2.6, 3.4],
   [6.0, 6.7],
+  [8.3, 8.75],
   [10.1, 10.9],
   [14.2, 14.8],
   [16.8, 17.4],
@@ -29,6 +30,15 @@ export const clamp01 = (v: number) => clamp(v, 0, 1);
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 export const range = (t: number, a: number, b: number) => clamp01((t - a) / (b - a));
 export const smooth = (t: number) => t * t * (3 - 2 * t);
+
+/** Integral of smoothstep: 0 before a, eases into slope 1 over [a, b], then grows linearly (C1 drift). */
+export function ramp(t: number, a: number, b: number): number {
+  if (t <= a) return 0;
+  const w = b - a;
+  if (t >= b) return w * 0.5 + (t - b);
+  const x = (t - a) / w;
+  return w * (x * x * x - 0.5 * x * x * x * x);
+}
 export const smoother = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
 export const inQuad = (t: number) => t * t;
 export const inCubic = (t: number) => t * t * t;

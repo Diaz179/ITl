@@ -1,26 +1,30 @@
 @import '../brand/tokens.css';
 
 /* The landing is art-directed as a dark film regardless of the cabinet theme. */
+/* «Чёрное золото»: мазут, кость, сурик, золото — and «плёнка», the oil-slick film computed in the stage shaders. */
 :root {
-  --ink: #07080b;
-  --ink-2: #0d0f14;
-  --ink-3: #151820;
-  --paper: #f3eee4;
-  --paper-2: #c3bdb2;
-  --paper-3: #938e86;
-  --line: rgb(243 238 228 / 0.09);
-  --line-2: rgb(243 238 228 / 0.18);
-  --surik: #ff5a1f;
-  --amber: #ffb547;
-  --oil: #d18a1d;
-  --contour: #45d6c2;
-  --film-1: #3ddcf5;
-  --film-2: #6f7dff;
-  --film-3: #b67cff;
-  --film-4: #ff6fa5;
-  --film-5: #ffc85c;
+  --ink: #0a0907;
+  --ink-2: #12100c;
+  --ink-3: #1b1813;
+  --paper: #f2ebdd;
+  --paper-2: #c8bfae;
+  --paper-3: #948b7c;
+  --line: rgb(242 235 221 / 0.09);
+  --line-2: rgb(242 235 221 / 0.18);
+  --surik: #ff4a14;
+  --gold: #d6a84e;
+  --amber: #f0b85a;
+  --oil: #d9871c;
+  --contour: #62dccf;
+  --film: linear-gradient(100deg, #d6a84e, #dea0d2 30%, #a691f5 52%, #74c4db 72%, #b9ce95 90%, #d6a84e);
   --pad: clamp(20px, 4.6vw, 76px);
   color-scheme: dark;
+}
+/* wide-gamut screens get a сурик beyond sRGB */
+@media (color-gamut: p3) {
+  :root {
+    --surik: color(display-p3 1 0.31 0.09);
+  }
 }
 
 @view-transition {
@@ -375,6 +379,20 @@ svg {
 .film .s5 .copy {
   width: min(50vw, 820px);
 }
+.film .s2 .copy {
+  width: min(34vw, 580px);
+}
+.film .s3 .copy {
+  width: min(36vw, 600px);
+}
+/* the night map is busy: a soft scrim keeps the words legible */
+.film .s4::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, rgb(10 9 7 / 0.8) 0%, rgb(10 9 7 / 0.52) 34%, transparent 58%);
+  pointer-events: none;
+}
 .film .track {
   display: block;
   height: calc(var(--len, 11) * 100svh + 100svh);
@@ -456,6 +474,9 @@ svg {
   height: 1.06em;
   overflow: clip;
   vertical-align: top;
+  /* drum curvature: glyphs fade at the top and bottom edge while they roll (--m = 0 at rest) */
+  -webkit-mask-image: linear-gradient(transparent, #000 calc(var(--m, 0) * 30%), #000 calc(100% - var(--m, 0) * 30%), transparent);
+  mask-image: linear-gradient(transparent, #000 calc(var(--m, 0) * 30%), #000 calc(100% - var(--m, 0) * 30%), transparent);
 }
 .rs {
   display: flex;
@@ -552,7 +573,7 @@ svg {
   right: 0;
   height: calc(50% - 0.5px);
   overflow: hidden;
-  background: linear-gradient(#171a22, #12151b);
+  background: linear-gradient(#1c1914, #15120e);
   backface-visibility: hidden;
 }
 .fc__t,
@@ -564,7 +585,7 @@ svg {
 .fc__lb {
   bottom: 0;
   border-radius: 0 0 0.09em 0.09em;
-  background: linear-gradient(#12151b, #0e1015);
+  background: linear-gradient(#15120e, #100e0a);
 }
 .fc__lt {
   transform-origin: 50% 100%;
@@ -573,6 +594,9 @@ svg {
 .fc__lb {
   transform-origin: 50% 0;
   z-index: 2;
+}
+.fc.is-blank > span {
+  background: transparent;
 }
 .fc i {
   position: absolute;
@@ -752,11 +776,12 @@ svg {
 
 /* 06 · end card */
 .title--end {
-  font-size: clamp(2.8rem, 10vw, 10.5rem);
+  font-size: clamp(2.8rem, 8.2vw, 9rem);
   font-weight: 820;
   letter-spacing: -0.055em;
   line-height: 0.88;
-  white-space: nowrap;
+  /* two lines on the left, clear of the ring on the right */
+  max-width: 6.6em;
 }
 .get {
   display: flex;
@@ -1276,6 +1301,9 @@ html:not(.film) .details__panel {
   }
   .film .s5 .copy {
     width: auto;
+  }
+  .film .s4::before {
+    background: linear-gradient(0deg, rgb(10 9 7 / 0.86) 0%, rgb(10 9 7 / 0.5) 42%, transparent 64%);
   }
   .title--hero {
     font-size: clamp(2rem, 9.4vw, 3.4rem);

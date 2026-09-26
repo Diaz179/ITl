@@ -62,6 +62,17 @@ float vnoise(vec3 p) {
 float dissolveNoise(vec3 q) { return 0.62 * vnoise(q * 4.2 + 3.1) + 0.38 * vnoise(q * 9.7 - 1.7); }
 `;
 
+// «плёнка»: oil-slick thin-film interference, 2·n·d·cosθt path difference with a π shift at the top interface
+const FILM = /* glsl */ `
+vec3 thinFilm(float cosI, float d) {
+  const float n = 1.46;
+  float sinT2 = (1.0 - cosI * cosI) / (n * n);
+  float opd = 2.0 * n * d * sqrt(max(0.0, 1.0 - sinT2));
+  vec3 f = 0.5 - 0.5 * cos(6.2831853 * opd / vec3(650.0, 540.0, 460.0));
+  return mix(vec3(dot(f, vec3(0.3333))), f, 0.95);
+}
+`;
+
 export const RECT_VS = /* glsl */ `#version 300 es
 uniform vec4 uRect;
 out vec2 vNdc;
@@ -96,6 +107,7 @@ uniform float uDotGold;
 out vec4 o;
 ${LIGHT}
 ${NOISE}
+${FILM}
 const float R = 0.62;
 const float TUBE = 0.1327;
 
@@ -156,9 +168,11 @@ void main() {
       if (m.y < 0.5 && uDissolve > -0.15) {
         vec3 q = (uRingInv * vec4(p, 1.0)).xyz;
         float n = dissolveNoise(q);
-        if (n < uDissolve && passes < 4) {
+        if (n < uDissolve) {
+          // step clear of the thin shell (0.007·scale thick); a dissolved point is never accepted as a hit
+          if (passes >= 6) break;
           passes++;
-          t += 0.01;
+          t += 0.025 * uRingScale;
           continue;
         }
         edge = 1.0 - smoothstep(0.0, 0.07, n - uDissolve);
@@ -182,7 +196,11 @@ void main() {
     // clear enamel coat
     vec3 H = normalize(uKeyDir + V);
     col += uKeyCol * pow(max(dot(N, H), 0.0), 220.0) * 2.2 * (1.0 - inner);
-    col += uSignal * edge * 3.2;
+    // oil sheen at grazing angles: the same film the facets are made of
+    float nv = max(dot(N, V), 0.0);
+    float thick = 185.0 + 45.0 * sin(dot(p, vec3(1.3, 0.7, -0.9)) * 1.4 + uTime * 0.21);
+    col += thinFilm(nv, thick) * pow(1.0 - nv, 3.0) * 0.55 * (1.0 - inner);
+    col += uSignal * edge * 2.0;
   } else {
     vec3 base = mix(uSignal, uGold, uDotGold);
     col = surface(base, 0.2, 0.0, N, V, 1.0);
@@ -274,7 +292,7 @@ layout(location = 4) in vec3 aNA;
 layout(location = 5) in vec3 aB;
 layout(location = 6) in vec3 aNB;
 layout(location = 7) in vec4 aSeed;
-layout(location = 8) in vec2 aOrder;
+layout(location = 8) in vec3 aOrder;
 uniform mat4 uViewProj;
 uniform mat4 uRingModel;
 uniform mat4 uExcModel;
@@ -291,10 +309,13 @@ uniform float uSize;
 uniform vec3 uWind;
 uniform float uSway;
 out vec3 vN;
+out vec3 vS;
 out vec3 vW;
 out vec3 vBary;
 out float vFade;
 out float vSeed;
+out float vFly;
+out float vBias;
 ${NOISE}
 mat3 axisAngle(vec3 ax, float a) {
   float s = sin(a), c = cos(a), ic = 1.0 - c;
@@ -302,16 +323,25 @@ mat3 axisAngle(vec3 ax, float a) {
               ax.x * ax.y * ic - ax.z * s, c + ax.y * ax.y * ic, ax.z * ax.y * ic + ax.x * s,
               ax.x * ax.z * ic + ax.y * s, ax.y * ax.z * ic - ax.x * s, c + ax.z * ax.z * ic);
 }
+/** Tangent frame whose z is n; built from the particle's constant local normal, so it never flips in time. */
+mat3 frame(vec3 n) {
+  vec3 up = abs(n.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+  vec3 t = normalize(cross(up, n));
+  return mat3(t, cross(n, t), n);
+}
 vec3 bezier(vec3 a, vec3 b, vec3 c, vec3 d, float t) {
   float it = 1.0 - t;
   return it * it * it * a + 3.0 * it * it * t * b + 3.0 * it * t * t * c + t * t * t * d;
 }
 float inOutCubic(float t) { return t < 0.5 ? 4.0 * t * t * t : 1.0 - pow(-2.0 * t + 2.0, 3.0) * 0.5; }
+float smoother(float t) { return t * t * t * (t * (t * 6.0 - 15.0) + 10.0); }
 void main() {
   float n = dissolveNoise(aA);
   float appear = smoothstep(n - 0.015, n + 0.09, uDissolve);
+  mat3 RA = mat3(uRingModel);
+  RA = mat3(normalize(RA[0]), normalize(RA[1]), normalize(RA[2]));
   vec3 A = (uRingModel * vec4(aA, 1.0)).xyz;
-  vec3 NA = normalize(mat3(uRingModel) * aNA);
+  vec3 NA = RA * aNA;
   vec3 B = (uExcModel * vec4(aB, 1.0)).xyz;
   vec3 NB = normalize(mat3(uExcModel) * aNB);
 
@@ -322,6 +352,9 @@ void main() {
   vec3 P1 = A + NA * 0.42 + vec3(0.0, 0.75, 0.0) + aSeed.xyz * 0.5;
   vec3 P2 = B + NB * 0.55 + vec3(0.0, 0.6, 0.0) + aSeed.zxy * 0.38;
   vec3 pos = bezier(A, P1, P2, B, fe);
+  // anticipation: each facet tucks into the shell before it leaves
+  float pre = clamp((uT - fs + 0.18) / 0.18, 0.0, 1.0);
+  pos -= NA * 0.04 * sin(3.14159 * pre) * step(f, 0.0);
   // arrival: carry through the slot a little, then settle back
   float k = clamp((f - 0.78) / 0.22, 0.0, 1.0);
   pos += normalize(B - P2) * 0.06 * sin(3.14159 * k) * (1.0 - k * 0.4) * step(0.001, f);
@@ -341,68 +374,80 @@ void main() {
     vec3 swirl = (sw * sin(ang) + cross(dir, sw) * (cos(ang) - 1.0)) * 0.3 * d;
     pos = B + NB * tuck + dir * travel + swirl + vec3(0.0, 0.5, 0.0) * d * d;
   }
-  float spinF = 6.2831 * (1.2 + 1.6 * aSeed.w) * (f * f * f * (f * (f * 6.0 - 15.0) + 10.0));
-  float spinD = 6.2831 * (0.7 + aSeed.w) * d * d;
-  float ang = aSeed.w * 6.2831 + uTime * (0.16 + 0.3 * aSeed.w) + spinF + spinD;
-  mat3 R = axisAngle(normalize(aSeed.xyz + vec3(0.001, 0.002, 0.003)), ang);
+
+  // orientation: one face lies on the surface, facing out; the surface normal swings from the shell to the machine
+  vec3 cr = cross(NA, NB);
+  float cl = length(cr);
+  vec3 swingAx = cl > 1e-4 ? cr / cl : normalize(cross(NA, abs(NA.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+  mat3 swing = axisAngle(swingAx, acos(clamp(dot(NA, NB), -1.0, 1.0)) * fe);
+  vec3 Ns = swing * NA;
+  // face normal (1,1,-1)/√3 of the unit tetrahedron → +z of the tangent frame
+  mat3 pre0 = axisAngle(vec3(0.70710678, -0.70710678, 0.0), 2.186276);
+  float tilt = 0.16 + 0.3 * fract(aSeed.w * 7.13) + 0.1 * sin(uTime * 0.8 + aSeed.w * 31.0) * (1.0 - d);
+  float tiltDir = aSeed.x * 3.14159;
+  mat3 lean = axisAngle(vec3(cos(tiltDir), sin(tiltDir), 0.0), tilt);
+  mat3 twist = axisAngle(vec3(0.0, 0.0, 1.0), aSeed.y * 3.14159);
+  // whole turns in flight, so each facet lands exactly as it left; a small wobble settles the landing
+  float turns = 1.0 + floor(aSeed.w * 2.0);
+  float spin = 6.2831853 * turns * smoother(f) + 0.45 * sin(3.14159 * k) * (1.0 - k) + 6.2831 * (0.7 + aSeed.w) * d * d;
+  mat3 tumble = axisAngle(normalize(aSeed.xyz + vec3(0.001, 0.002, 0.003)), spin);
+  mat3 R = swing * RA * frame(aNA) * twist * lean * tumble * pre0;
   float s = uSize * appear * (1.0 + 0.22 * sin(3.14159 * f)) * (1.0 - smoothstep(0.62, 1.0, d) * 0.7);
   // playhead inertia leans the whole formation a touch
   pos.x += uSway * 0.04 * (pos.y + 0.5);
   vec3 w = pos + R * (aPos * s);
   vN = R * aNormal;
+  vS = Ns;
   vW = w;
   vBary = aBary;
   vFade = appear * (1.0 - smoothstep(0.42, 0.97, d));
   vSeed = aSeed.w;
+  vFly = sin(3.14159 * f) + d;
+  vBias = aOrder.z * fe;
   gl_Position = uViewProj * vec4(w, 1.0);
 }`;
 
 export const PARTICLE_FS = /* glsl */ `#version 300 es
 precision highp float;
 in vec3 vN;
+in vec3 vS;
 in vec3 vW;
 in vec3 vBary;
 in float vFade;
 in float vSeed;
-uniform vec3 uFilm[5];
+in float vFly;
+in float vBias;
 uniform vec3 uPaper;
 out vec4 o;
 ${LIGHT}
 ${NOISE}
-vec3 filmColor(float x) {
-  x = fract(x) * 5.0;
-  float i = floor(x);
-  float f = smoothstep(0.0, 1.0, fract(x));
-  vec3 a = uFilm[0], b = uFilm[1];
-  if (i < 0.5) { a = uFilm[0]; b = uFilm[1]; }
-  else if (i < 1.5) { a = uFilm[1]; b = uFilm[2]; }
-  else if (i < 2.5) { a = uFilm[2]; b = uFilm[3]; }
-  else if (i < 3.5) { a = uFilm[3]; b = uFilm[4]; }
-  else { a = uFilm[4]; b = uFilm[0]; }
-  return mix(a, b, f);
-}
+${FILM}
 void main() {
   if (vFade < 0.999 && vFade < hash12(gl_FragCoord.xy + vSeed * 97.0)) discard;
   vec3 N = normalize(vN);
   vec3 V = normalize(uCam - vW);
   if (dot(N, V) < 0.0) N = -N;
   float cosT = clamp(dot(N, V), 0.0, 1.0);
-  // slow thin-film gradient flowing across the whole formation
-  float th = 0.5 + 0.5 * sin(dot(vW, vec3(0.9, 0.35, -0.45)) * 1.25 - uTime * 0.3);
-  th += 0.3 * sin(dot(vW, vec3(-0.25, 1.0, 0.3)) * 1.9 + uTime * 0.19);
-  vec3 film = filmColor(th * 0.55 + (1.0 - cosT) * 0.7 + vSeed * 0.08);
+  // first-order film, 120–290 nm: the temper colours of heat-treated steel (straw, gold, bronze, purple, blue),
+  // drifting slowly across the whole formation; landed facets add their part's bias
+  float d = 192.0 + 62.0 * sin(dot(vW, vec3(0.8, 0.45, -0.4)) * 0.95 - uTime * 0.2);
+  d += 30.0 * (vnoise(vW * 1.2 + vec3(0.0, uTime * 0.04, 0.0)) - 0.5) + vSeed * 12.0 + vBias;
+  vec3 film = thinFilm(cosT, d);
   vec3 L = uKeyDir;
   vec3 H = normalize(L + V);
   float diff = max(dot(N, L), 0.0);
-  float spec = pow(max(dot(N, H), 0.0), 56.0);
-  float fres = 0.1 + 0.9 * pow(1.0 - cosT, 4.0);
-  vec3 col = vec3(0.01, 0.012, 0.018) + film * (0.1 + 0.62 * diff + 0.85 * fres);
-  col += spec * 1.6 * mix(vec3(1.0), film, 0.35);
-  col += uRimCol * pow(1.0 - cosT, 3.0) * 0.35;
+  float spec = pow(max(dot(N, H), 0.0), 64.0);
+  float fres = 0.06 + 0.94 * pow(1.0 - cosT, 4.0);
+  // the skin facing the camera is lit; the far skin, seen through the gaps, sinks into shadow
+  float facing = dot(normalize(vS), V);
+  float shell = mix(0.26, 1.0, smoothstep(-0.35, 0.3, facing));
+  vec3 col = vec3(0.012, 0.011, 0.009) + film * (0.07 + 0.6 * diff + 0.95 * fres) * shell;
+  col += spec * (1.3 + 0.9 * min(vFly, 1.0)) * mix(vec3(1.0), film * 1.5, 0.5) * shell;
+  col += env(reflect(-V, N)) * film * fres * 0.45 * shell;
   float e = min(min(vBary.x, vBary.y), vBary.z);
   float w = fwidth(e);
-  float edge = 1.0 - smoothstep(w * 0.5, w * 1.6 + 0.035, e);
-  col += edge * (0.12 + 1.8 * spec + 0.7 * fres + 0.3 * diff) * mix(uPaper, film, 0.5);
+  float edge = 1.0 - smoothstep(w * 0.5, w * 1.5 + 0.022, e);
+  col += edge * (0.05 + 1.2 * spec + 0.35 * fres + 0.12 * diff) * mix(uPaper, film, 0.6) * shell;
   o = vec4(fog(col, vW), 1.0);
 }`;
 
@@ -465,29 +510,76 @@ void main() {
   // topographic contours; lit by the coverage pulses near the mast
   float h = vH * 7.0;
   float fw = fwidth(h) + 1e-4;
-  float line = 1.0 - smoothstep(fw * 0.6, fw * 1.6, abs(fract(h + 0.5) - 0.5));
+  // levels sit at half-steps, so the flattened valley floor (h = 0) never lands on a contour
+  float line = 1.0 - smoothstep(fw * 0.6, fw * 1.6, abs(fract(h) - 0.5));
   float pulse = 0.5 + 0.5 * sin(dm * 5.5 - uTime * 3.2);
   pulse = pow(pulse, 6.0);
-  vec3 cc = mix(vec3(0.05, 0.065, 0.07), uContour * (0.4 + 1.6 * pulse), cover);
-  col = mix(col, cc, line * 0.85);
+  vec3 cc = mix(uPaper * 0.075, uContour * (0.4 + 1.6 * pulse), cover);
+  col = mix(col, cc, line * 0.8);
   // coverage fringe and rings on the ground
   float ring = exp(-pow((fract(dm * 0.55 - uTime * 0.35) - 0.5) * 9.0, 2.0));
   col += uContour * ring * cover * 0.08;
   col += uContour * exp(-pow((dm - uCover) * 5.0, 2.0)) * 0.12;
   // dead zone: the ground loses signal
   float stat = hash12(floor(gl_FragCoord.xy / 2.0) + floor(uTime * 16.0) * 13.0) - 0.5;
-  col += stat * 0.035 * (1.0 - cover);
+  col += stat * 0.014 * (1.0 - cover);
   col *= mix(0.72, 1.0, cover);
-  // route: travelled part solid, the rest dashed
-  float rw = 0.03;
-  float aa = fwidth(vD) * 1.4 + 1e-4;
-  float rl = 1.0 - smoothstep(rw, rw + aa, abs(vD));
-  float dash = step(0.5, fract(vU * uRouteLen / 0.2));
-  float done = step(vU, uMachineU);
-  col = mix(col, mix(uPaper * 0.35, uPaper * 1.1, done), rl * max(done, dash * 0.9));
-  // rising edge glows as the land assembles
-  col += uSignal * (1.0 - smoothstep(0.0, 0.18, vReveal)) * 0.6 * step(0.002, vReveal);
+  // the route itself is a separate ribbon (ROUTE_VS/FS): a line thinner than a grid cell cannot come from vD
+  // a hairline traces the front while the land assembles
+  col += uPaper * 0.22 * (1.0 - smoothstep(0.0, 0.05, vReveal)) * step(0.002, vReveal);
   o = vec4(fog(col, vW), 1.0);
+}`;
+
+/** The route as a ribbon on the valley floor; it rises with the land (same easing as TERRAIN_VS). */
+export const ROUTE_VS = /* glsl */ `#version 300 es
+layout(location = 0) in vec2 aXZ;
+layout(location = 1) in vec2 aUS;
+uniform mat4 uViewProj;
+uniform float uRise;
+uniform vec2 uRiseCentre;
+out float vU;
+out float vSide;
+out float vReveal;
+out vec3 vW;
+void main() {
+  float dist = length(aXZ - uRiseCentre);
+  float k = clamp(uRise * 1.5 - dist / 13.0, 0.0, 1.0);
+  float kk = k * k * (3.0 - 2.0 * k);
+  vec3 p = vec3(aXZ.x, 0.012 - (1.0 - kk) * 0.35, aXZ.y);
+  vU = aUS.x;
+  vSide = aUS.y;
+  vReveal = k;
+  vW = p;
+  gl_Position = uViewProj * vec4(p, 1.0);
+}`;
+
+export const ROUTE_FS = /* glsl */ `#version 300 es
+precision highp float;
+in float vU;
+in float vSide;
+in float vReveal;
+in vec3 vW;
+uniform float uMachineU;
+uniform float uRouteLen;
+uniform float uAlpha;
+uniform vec3 uPaper;
+uniform vec3 uCam;
+uniform vec3 uFog;
+uniform vec2 uFogRange;
+out vec4 o;
+void main() {
+  if (vReveal <= 0.002) discard;
+  float done = step(vU, uMachineU);
+  // the part still ahead is dashed and narrower
+  float dash = step(0.45, fract(vU * uRouteLen / 0.2));
+  float halfW = mix(0.55, 1.0, done);
+  float s = abs(vSide);
+  float aa = fwidth(vSide) * 1.2 + 1e-4;
+  float a = (1.0 - smoothstep(halfW - aa, halfW, s)) * max(done, dash * 0.85) * uAlpha;
+  vec3 col = mix(uPaper * 0.34, uPaper * 1.15, done);
+  col = mix(col, uFog, smoothstep(uFogRange.x, uFogRange.y, length(uCam - vW)));
+  if (a < 0.003) discard;
+  o = vec4(col, a);
 }`;
 
 export const MARKER_VS = /* glsl */ `#version 300 es
@@ -650,14 +742,21 @@ void main() {
   float oil = inside * step(v.y, sy);
   if (oil > 0.5) {
     float depth = clamp((sy - v.y) / max(sy, 0.05), 0.0, 1.0);
-    vec3 c = mix(uGold, uDeep, pow(depth, 0.7));
-    vec2 cp = vec2(v.x * 2.2, v.y * 5.0 - uTime * 0.12);
-    float ca = vnoise(vec3(cp * 2.3, uTime * 0.25)) * 0.6 + vnoise(vec3(cp * 5.1 + 2.0, uTime * 0.4)) * 0.4;
-    float caust = pow(1.0 - abs(ca * 2.0 - 1.0), 6.0);
-    c += uAmber * caust * (1.0 - depth) * 0.9;
-    c += uAmber * 1.4 * exp(-(sy - v.y) * 60.0);
+    // a lit cylinder of oil: gold under the surface, amber in the body, dark at the walls and the bottom
+    vec3 c = mix(uGold * 1.2, uAmber, smoothstep(0.0, 0.45, depth));
+    c = mix(c, uDeep, smoothstep(0.35, 1.0, depth) * 0.85);
+    float wallShade = 1.0 - v.x * v.x;
+    c *= 0.4 + 0.6 * wallShade;
+    // slow refracted light drifting through the body (soft ridges, not foam)
+    vec2 cp = vec2(v.x * 1.6, v.y * 3.2 - uTime * 0.06);
+    float ca = vnoise(vec3(cp * 1.7, uTime * 0.12)) * 0.65 + vnoise(vec3(cp * 3.4 + 2.0, uTime * 0.2)) * 0.35;
+    float caust = pow(1.0 - abs(ca * 2.0 - 1.0), 3.0);
+    c += uGold * caust * (1.0 - depth) * 0.26 * wallShade;
+    // backlight through the glass: a soft vertical core
+    c += uGold * 0.32 * exp(-v.x * v.x * 6.0) * (1.0 - depth * 0.6);
+    c += uAmber * 1.2 * exp(-(sy - v.y) * 60.0);
     // bubbles rising in a few lanes
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 4; i++) {
       float fi = float(i);
       float lane = hash12(vec2(fi, 3.7)) * 1.6 - 0.8;
       float speed = 0.08 + 0.06 * hash12(vec2(fi, 9.1));
@@ -666,7 +765,7 @@ void main() {
       vec2 bd = (v - bp) * vec2(half_.x, 2.0 * half_.y);
       float br = 0.006 + 0.004 * hash12(vec2(fi, 5.5));
       float b = length(bd);
-      c += uPaper * 0.5 * smoothstep(br, br * 0.6, b) * smoothstep(br * 0.3, br * 0.8, b);
+      c += uPaper * 0.3 * smoothstep(br, br * 0.6, b) * smoothstep(br * 0.3, br * 0.8, b);
     }
     col = c;
   } else if (inside > 0.5) {

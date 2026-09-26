@@ -26,18 +26,18 @@ import {
 import { clamp, inQuad, inOutCubic, lerp, range, smooth } from '../time';
 import type { BuildResult } from '../worker';
 
+/** «Чёрное золото»: мазут, кость, сурик, золото; the iridescence («плёнка») is computed in the shaders. */
 export const PALETTE = {
-  ink: '#07080b',
-  inkHigh: '#10131a',
-  paper: '#f3eee4',
-  signal: '#ff5a1f',
-  gold: '#ffb547',
-  amber: '#ff9a2e',
-  oilDeep: '#6b3306',
-  taiga: '#16372f',
-  taigaDeep: '#08140f',
-  contour: '#45d6c2',
-  film: ['#3ddcf5', '#6f7dff', '#b67cff', '#ff6fa5', '#ffc85c'],
+  ink: '#0a0907',
+  inkHigh: '#17130e',
+  paper: '#f2ebdd',
+  signal: '#ff4a14',
+  gold: '#f0b85a',
+  amber: '#d9871c',
+  oilDeep: '#4a2104',
+  taiga: '#1b1d15',
+  taigaDeep: '#0b0b08',
+  contour: '#62dccf',
 };
 
 const L = {
@@ -51,7 +51,6 @@ const L = {
   taiga: hexLinear(PALETTE.taiga),
   taigaDeep: hexLinear(PALETTE.taigaDeep),
   contour: hexLinear(PALETTE.contour),
-  film: new Float32Array(PALETTE.film.flatMap(hexLinear)),
 };
 
 export interface StageOptions {
@@ -89,6 +88,7 @@ export class Stage {
   private markers: { vao: WebGLVertexArrayObject; count: number; enterT: number } | null = null;
   private digits: WebGLTexture | null = null;
   private route: Route = route();
+  private ribbon!: { vao: WebGLVertexArrayObject; count: number };
   private view = m4.identity();
   private proj = m4.identity();
   viewProj = m4.identity();
@@ -120,6 +120,7 @@ export class Stage {
     this.p.sprite = program(gl, S.SPRITE_VS, S.SPRITE_FS, 'sprite');
     this.p.backdrop = program(gl, S.TRI_VS, S.BACKDROP_FS, 'backdrop');
     this.p.oil = program(gl, S.TRI_VS, S.OIL_FS, 'oil');
+    this.p.route = program(gl, S.ROUTE_VS, S.ROUTE_FS, 'route');
     this.empty = gl.createVertexArray()!;
     this.tetra = this.mesh(tetrahedron(), [[0, 3], [1, 3], [2, 3]]);
     this.wheel = this.mesh(cylinder(96), [[0, 3], [1, 3], [2, 2]]);
@@ -127,6 +128,27 @@ export class Stage {
     const q: number[] = [];
     for (const [x, y] of [[0, 0], [1, 0], [1, 1], [0, 0], [1, 1], [0, 1]]) q.push(x - 0.5, y - 0.5, 0, 0, 0, 1, x, y);
     this.quad = this.mesh(new Float32Array(q), [[0, 3], [1, 3], [2, 2]]);
+    this.ribbon = this.buildRibbon(0.03);
+  }
+
+  /** Route as a flat triangle strip in site space: (x, z, u, side) per vertex. */
+  private buildRibbon(halfWidth: number) {
+    const { pts, cum, length } = this.route;
+    const data: number[] = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+      const tx = b[0] - a[0], tz = b[1] - a[1];
+      const l = Math.hypot(tx, tz) || 1;
+      const nx = -tz / l, nz = tx / l;
+      const u = cum[i] / length;
+      for (const side of [-1, 1]) data.push(pts[i][0] + nx * halfWidth * side, pts[i][1] + nz * halfWidth * side, u, side);
+    }
+    const gl = this.gl;
+    const vao = gl.createVertexArray()!;
+    gl.bindVertexArray(vao);
+    attribs(gl, buffer(gl, new Float32Array(data)), [[0, 2], [1, 2]]);
+    gl.bindVertexArray(null);
+    return { vao, count: data.length / 4 };
   }
 
   private mesh(data: Float32Array, layout: Array<[number, number]>): Mesh {
@@ -172,7 +194,7 @@ export class Stage {
     const pvao = gl.createVertexArray()!;
     gl.bindVertexArray(pvao);
     attribs(gl, buffer(gl, tetrahedron()), [[0, 3], [1, 3], [2, 3]]);
-    attribs(gl, buffer(gl, b.instances), [[3, 3], [4, 3], [5, 3], [6, 3], [7, 4], [8, 2]], 1);
+    attribs(gl, buffer(gl, b.instances), [[3, 3], [4, 3], [5, 3], [6, 3], [7, 4], [8, 3]], 1);
     gl.bindVertexArray(null);
     this.particles = { vao: pvao, count: b.count, size: b.size };
 
@@ -286,9 +308,10 @@ export class Stage {
     const key = 1.7 + w.s5 * 0.2;
     gl.uniform3f(u.uKeyCol, 1.0 * key, 0.93 * key, 0.84 * key);
     gl.uniform3fv(u.uRimDir, v3.norm([-0.7, 0.35, -0.6]));
-    gl.uniform3f(u.uRimCol, 0.22, 0.58, 0.68);
-    gl.uniform3f(u.uSky, 0.05, 0.065, 0.085);
-    gl.uniform3f(u.uGround, 0.01, 0.011, 0.013);
+    // warm gold rim instead of the stock teal: the black-and-gold livery
+    gl.uniform3f(u.uRimCol, 0.56, 0.4, 0.2);
+    gl.uniform3f(u.uSky, 0.062, 0.056, 0.05);
+    gl.uniform3f(u.uGround, 0.012, 0.01, 0.008);
     gl.uniform1f(u.uTime, time);
     gl.uniform3fv(u.uFog, L.ink);
     const near = lerp(6.5, 11, w.s4), far = lerp(15, 24, w.s4);
@@ -333,14 +356,14 @@ export class Stage {
 
     const grade: Grade = {
       exposure: 1.02 - w.s5 * 0.04,
-      bloom: 0.62 * w.s1 + 0.55 * w.s2 + 0.5 * w.s3 + 0.6 * w.s4 + 0.42 * w.s5 + 0.62 * w.s6,
-      threshold: 0.95,
+      bloom: 0.55 * w.s1 + 0.45 * w.s2 + 0.36 * w.s3 + 0.55 * w.s4 + 0.42 * w.s5 + 0.55 * w.s6,
+      threshold: 1.05,
       vignette: 0.55 + 0.1 * w.s4,
       grain: 0.03,
       ca: 0.004,
-      saturation: 1 + 0.06 * w.s3,
-      shadowTint: [0.42, 0.56, 0.62],
-      highTint: [1.0, 0.86, 0.72],
+      saturation: 1 + 0.08 * w.s3,
+      shadowTint: [0.53, 0.5, 0.46],
+      highTint: [1.0, 0.88, 0.7],
       fade: smooth(range(T, 0, 0.3)) * (still ? 1 : 1),
       time: still ? 0 : time,
       prevMix: f.prevMix ?? 0,
@@ -365,11 +388,11 @@ export class Stage {
     gl.uniform1f(u.uTime, time);
     gl.uniform3fv(u.uLow, L.ink);
     gl.uniform3fv(u.uHigh, L.inkHigh);
-    gl.uniform3f(u.uBeamCol, 0.55, 0.6, 0.66);
+    gl.uniform3f(u.uBeamCol, 0.66, 0.56, 0.42);
     gl.uniform1f(u.uBeam, 0.075 * w.s1 + 0.045 * w.s2 + 0.02 * w.s3 + 0.075 * w.s6);
     const bx = this.portrait ? 0.5 : 0.71;
     gl.uniform2f(u.uBeamPos, bx, this.portrait ? 0.68 : 0.5);
-    gl.uniform3fv(u.uGlowCol, w.s5 > 0.01 ? L.amber : L.paper);
+    gl.uniform3fv(u.uGlowCol, w.s5 > 0.01 ? L.amber : L.gold);
     gl.uniform1f(u.uGlow, 0.018 * w.s2 + 0.07 * w.s5);
     gl.uniform2f(u.uGlowPos, bx, this.portrait ? 0.66 : 0.5);
     gl.uniform1f(u.uHorizon, 0.04 * w.s3);
@@ -395,7 +418,8 @@ export class Stage {
     gl.uniform1f(u.uCover, COVERAGE);
     gl.uniform1f(u.uMachineU, machineU(T));
     gl.uniform1f(u.uRouteLen, this.terrain.routeLen);
-    gl.uniform1f(u.uAlpha, 1 - range(T, 15.0, 15.45));
+    const landAlpha = 1 - range(T, 14.8, 15.2);
+    gl.uniform1f(u.uAlpha, landAlpha);
     gl.uniform3fv(u.uTaiga, L.taiga);
     gl.uniform3fv(u.uTaigaDeep, L.taigaDeep);
     gl.uniform3fv(u.uContour, L.contour);
@@ -405,6 +429,27 @@ export class Stage {
     gl.uniform3fv(u.uCam, v3.sub(this.eye, SITE));
     gl.bindVertexArray(this.terrain.vao);
     gl.drawElements(gl.TRIANGLES, this.terrain.count, gl.UNSIGNED_INT, 0);
+
+    // route ribbon on the valley floor
+    const rp = this.p.route;
+    gl.useProgram(rp.p);
+    gl.uniformMatrix4fv(rp.u.uViewProj, false, m4.mul(m4.identity(), this.viewProj, model));
+    gl.uniform1f(rp.u.uRise, 1.45 * range(T, 11.3, 13.0));
+    gl.uniform2f(rp.u.uRiseCentre, 0, 0);
+    gl.uniform1f(rp.u.uMachineU, machineU(T));
+    gl.uniform1f(rp.u.uRouteLen, this.terrain.routeLen);
+    gl.uniform1f(rp.u.uAlpha, landAlpha);
+    gl.uniform3fv(rp.u.uPaper, L.paper);
+    gl.uniform3fv(rp.u.uCam, v3.sub(this.eye, SITE));
+    gl.uniform3fv(rp.u.uFog, L.ink);
+    gl.uniform2f(rp.u.uFogRange, lerp(6.5, 11, sceneWeights(T).s4), lerp(15, 24, sceneWeights(T).s4));
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.depthMask(false);
+    gl.bindVertexArray(this.ribbon.vao);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, this.ribbon.count);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
 
     // mast and stored points
     const mesh = this.p.mesh;
@@ -420,7 +465,7 @@ export class Stage {
     gl.uniform3f(mu.uBase, 0.2, 0.21, 0.23);
     gl.uniform3f(mu.uEmit, 0.0, 0.0, 0.0);
     gl.uniform1f(mu.uRough, 0.5);
-    gl.uniform1f(mu.uAlpha, 1 - range(T, 15.0, 15.45));
+    gl.uniform1f(mu.uAlpha, landAlpha);
     gl.bindVertexArray(this.wheel.vao);
     gl.drawArrays(gl.TRIANGLES, 0, this.wheel.count);
 
@@ -575,7 +620,7 @@ export class Stage {
     const pr0 = panelRise(T);
     // instrument window behind the wheels
     if (pr0 > 0.001) {
-      const local = m4.compose(m4.identity(), [0, 0, -0.06 - (1 - pr0) * 0.2], 0, 0, 0, [0.72 * pr0, 0.25 * pr0, 1]);
+      const local = m4.compose(m4.identity(), [0, 0, -0.06 - (1 - pr0) * 0.2], 0, 0, 0, [0.8 * pr0, 0.27 * pr0, 1]);
       gl.uniformMatrix4fv(u.uModel, false, m4.mul(m4.identity(), ring, local));
       gl.uniform1i(u.uMode, 2);
       gl.uniform3f(u.uBase, 0.02, 0.022, 0.028);
@@ -599,7 +644,7 @@ export class Stage {
       if (r <= 0.001) continue;
       const pos = digits[i];
       const delta = Math.PI / 2 - Math.PI * 2 * (pos / 10 + 0.05);
-      const local = m4.compose(m4.identity(), [WHEEL_X[i], 0, 0.02 - (1 - r) * 0.45], delta, 0, 0, [0.085 * r, 0.078 * r, 0.078 * r]);
+      const local = m4.compose(m4.identity(), [WHEEL_X[i], 0, 0.02 - (1 - r) * 0.45], delta, 0, 0, [0.094 * r, 0.086 * r, 0.086 * r]);
       gl.uniformMatrix4fv(u.uModel, false, m4.mul(m4.identity(), ring, local));
       const tenth = i === 5;
       if (tenth) {
@@ -619,7 +664,7 @@ export class Stage {
   }
 
   private drawParticles(T: number, time: number, sway: number) {
-    if (!this.particles || T < 7.4 || T > 13.4) return;
+    if (!this.particles || T < 7.25 || T > 13.4) return;
     const gl = this.gl;
     const pr = this.p.particle;
     gl.enable(gl.DEPTH_TEST);
@@ -627,20 +672,19 @@ export class Stage {
     this.light(pr, T, time);
     const u = pr.u;
     gl.uniformMatrix4fv(u.uViewProj, false, this.viewProj);
-    gl.uniformMatrix4fv(u.uRingModel, false, ringModel(ringState(Math.min(T, 8.84))));
+    gl.uniformMatrix4fv(u.uRingModel, false, ringModel(ringState(Math.min(T, 10.6))));
     gl.uniformMatrix4fv(u.uExcModel, false, excModel);
     gl.uniform1f(u.uT, T);
-    gl.uniform1f(u.uDissolve, ringState(Math.min(T, 8.84)).dissolve);
-    gl.uniform1f(u.uFly0, 8.7);
-    gl.uniform1f(u.uFlySpread, 0.6);
-    gl.uniform1f(u.uFlyDur, 1.0);
+    gl.uniform1f(u.uDissolve, ringState(Math.min(T, 10.6)).dissolve);
+    gl.uniform1f(u.uFly0, 8.8);
+    gl.uniform1f(u.uFlySpread, 0.5);
+    gl.uniform1f(u.uFlyDur, 0.95);
     gl.uniform1f(u.uDis0, 10.95);
     gl.uniform1f(u.uDisSpread, 0.8);
     gl.uniform1f(u.uDisDur, 1.25);
     gl.uniform1f(u.uSize, this.particles.size);
     gl.uniform3fv(u.uWind, v3.norm([-0.62, 0.5, 0.42]));
     gl.uniform1f(u.uSway, sway);
-    gl.uniform3fv(u.uFilm, L.film);
     gl.uniform3fv(u.uPaper, L.paper);
     gl.bindVertexArray(this.particles.vao);
     gl.drawArraysInstanced(gl.TRIANGLES, 0, 12, this.particles.count);
@@ -681,8 +725,8 @@ export class Stage {
     if (dot.on && T > 9.9 && T < 14.9) {
       for (let i = 0; i < 2; i++) {
         const ph = (time * 0.7 + i * 0.5) % 1;
-        const c = v3.scale(sig, 0.9 * (1 - ph) * (1 - ph));
-        this.sprite(dot.pos, dot.radius * (2 + 6 * ph), c, 0.75, 0.06, 0);
+        const c = v3.scale(sig, 0.5 * (1 - ph) * (1 - ph));
+        this.sprite(dot.pos, dot.radius * (1.8 + 4.2 * ph), c, 0.75, 0.045, 0);
       }
     }
     // coverage mast

@@ -5,7 +5,7 @@
 import { m4, type V3 } from './gl/core';
 import type { Stage } from './gl/stage';
 import { OIL, R_RING, machineU, ringModel, ringState } from './choreo';
-import { clamp01, inCubic, lerp, outCubic, range, settle, smooth } from './time';
+import { clamp01, inCubic, lerp, outCubic, outQuart, range, settle, smooth } from './time';
 
 interface Fx {
   el: HTMLElement;
@@ -186,8 +186,11 @@ export class TypeLayer {
       case 'count': {
         const from = Number(el.dataset.from), to = Number(el.dataset.to), dur = Number(el.dataset.dur ?? 0.8), digits = Number(el.dataset.digits ?? 0);
         let last = '';
+        // counters sit inside an animated parent: follow its visibility instead of the [data-fx] default
+        el.style.visibility = 'inherit';
         make((T) => {
-          const v = lerp(from, to, settle(range(T, tin, tin + dur), 0.04));
+          // data never overshoots: a spring here once printed «−198 из 5 425»
+          const v = lerp(from, to, outQuart(range(T, tin, tin + dur)));
           const s = ru(v, digits);
           if (s !== last) el.textContent = last = s;
         });
@@ -225,7 +228,7 @@ export class TypeLayer {
     const vis = hiddenCopy(el);
     const text = vis.textContent ?? '';
     vis.textContent = '';
-    const strips: Array<{ s: HTMLElement; n: number }> = [];
+    const strips: Array<{ s: HTMLElement; c: HTMLElement; n: number; m: string }> = [];
     const rnd = seeded(4242);
     for (const [wi, word] of text.split(' ').entries()) {
       if (wi) vis.append(' ');
@@ -246,18 +249,23 @@ export class TypeLayer {
         }
         c.append(s);
         w.append(c);
-        strips.push({ s, n });
+        strips.push({ s, c, n, m: '' });
       }
       vis.append(w);
     }
     make((T) => {
       let ex = 0;
-      strips.forEach(({ s, n }, i) => {
+      strips.forEach((st, i) => {
+        const { s, c, n } = st;
         const p = settle(range(T, tin + i * 0.028, tin + i * 0.028 + 0.9), 0.1);
         const e = inCubic(range(T, tout + i * 0.012, tout + i * 0.012 + 0.45));
         ex = Math.max(ex, e);
         const step = p * n + e * 1.0;
         s.style.transform = `translate3d(0, ${(-step / (n + 2)) * 100}%, 0)`;
+        // edge fade peaks mid-roll and is gone once the letter rests
+        const q = clamp01(p);
+        const m = Math.max(4 * q * (1 - q), 4 * e * (1 - e)).toFixed(2);
+        if (m !== st.m) c.style.setProperty('--m', (st.m = m));
       });
       el.style.opacity = String(1 - ex);
       el.style.visibility = T < tin || ex >= 1 ? 'hidden' : 'visible';
@@ -269,7 +277,7 @@ export class TypeLayer {
     const words = (el.dataset.words ?? '').split('|').map((w) => w.toUpperCase());
     const at = (el.dataset.at ?? '').split('|').map(Number);
     const n = Math.max(...words.map((w) => w.length));
-    const cells: Array<{ t: HTMLElement; b: HTMLElement; lt: HTMLElement; lb: HTMLElement; lti: HTMLElement; lbi: HTMLElement; ti: HTMLElement; bi: HTMLElement; state: string }> = [];
+    const cells: Array<{ c: HTMLElement; t: HTMLElement; b: HTMLElement; lt: HTMLElement; lb: HTMLElement; lti: HTMLElement; lbi: HTMLElement; ti: HTMLElement; bi: HTMLElement; state: string }> = [];
     const mk = (cls: string) => {
       const h = document.createElement('span');
       h.className = cls;
@@ -283,7 +291,7 @@ export class TypeLayer {
       const t = mk('fc__t'), b = mk('fc__b'), lt = mk('fc__lt'), lb = mk('fc__lb');
       c.append(t.h, b.h, lt.h, lb.h);
       el.append(c);
-      cells.push({ t: t.h, b: b.h, lt: lt.h, lb: lb.h, ti: t.i, bi: b.i, lti: lt.i, lbi: lb.i, state: '' });
+      cells.push({ c, t: t.h, b: b.h, lt: lt.h, lb: lb.h, ti: t.i, bi: b.i, lti: lt.i, lbi: lb.i, state: '' });
     }
     const charAt = (j: number, k: number) => (j < 0 ? ' ' : words[j][k] ?? ' ');
     make((T) => {
@@ -304,6 +312,8 @@ export class TypeLayer {
           c.bi.textContent = f >= 1 ? next : prev;
           c.lti.textContent = prev;
           c.lbi.textContent = next;
+          // unused cells of the board go dark instead of showing empty tiles
+          c.c.classList.toggle('is-blank', prev === ' ' && next === ' ');
           c.state = key;
         }
         if (f >= 1 || j < 0) {
@@ -347,7 +357,7 @@ export class TypeLayer {
   }
 
   private anchor(el: HTMLElement, tin: number, tout: number, make: (u: (T: number) => void) => void) {
-    const where: V3 = el.dataset.anchor === 'unit' ? [0.335, 0.0, 0.05] : [0, -0.2, 0.04];
+    const where: V3 = el.dataset.anchor === 'unit' ? [0.37, 0.0, 0.05] : [0, -0.215, 0.04];
     make((T) => {
       const p = settle(range(T, tin, tin + 0.6), 0.06);
       const q = inCubic(range(T, tout, tout + 0.4));
@@ -392,6 +402,9 @@ export class TypeLayer {
     for (const s of this.scenes) {
       const on = T >= s.a && T <= s.b;
       if (on !== s.shown) {
+        // a jump (chapter cut, reduced motion) can skip an element's own fade-out; settle it before hiding,
+        // since an inline `visible` child would otherwise show through its hidden scene
+        if (!on) for (const f of this.fx) if (f.el.closest('.scene') === s.el) f.update(T);
         s.el.style.visibility = on ? 'visible' : 'hidden';
         s.shown = on;
       }

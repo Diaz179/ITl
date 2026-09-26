@@ -95,6 +95,8 @@ export function cube(): Float32Array {
 interface Sample {
   p: V3;
   n: V3;
+  /** index of the part the point was sampled from */
+  k?: number;
 }
 interface Part {
   area: number;
@@ -309,7 +311,7 @@ export function sampleSurface(parts: Part[], count: number, seed: number): { poi
     for (let i = 0; i < n; i++) {
       const s = part.sample(r);
       if (parts.some((o, oi) => oi !== pi && o.inside(s.p))) continue;
-      cands.push(s);
+      cands.push({ p: s.p, n: s.n, k: pi });
     }
   }
   for (let i = cands.length - 1; i > 0; i--) {

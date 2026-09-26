@@ -12,9 +12,9 @@ const $ = <T extends Element = HTMLElement>(s: string, el: ParentNode = document
 const $$ = <T extends Element = HTMLElement>(s: string, el: ParentNode = document) => Array.from(el.querySelectorAll<T>(s));
 
 // ── brand marks ─────────────────────────────────────────
-for (const el of $$('[data-logo]')) el.innerHTML = symbolSvg({ className: 'logo-symbol', knockout: '#07080b' }) + wordmarkSvg({ className: 'logo-word' });
+for (const el of $$('[data-logo]')) el.innerHTML = symbolSvg({ className: 'logo-symbol', knockout: '#0a0907' }) + wordmarkSvg({ className: 'logo-word' });
 const still = $('[data-still-logo]');
-if (still) still.innerHTML = symbolSvg({ knockout: '#07080b' });
+if (still) still.innerHTML = symbolSvg({ knockout: '#0a0907' });
 for (const el of $$('[data-year]')) el.textContent = String(new Date().getFullYear());
 
 // ── details dossier ─────────────────────────────────────
@@ -97,7 +97,7 @@ async function startFilm() {
     worker.terminate();
   };
   const lowPower = (navigator.hardwareConcurrency ?? 8) <= 4;
-  worker.postMessage({ count: portrait() || lowPower ? 2400 : 4800, terrainRes: portrait() || lowPower ? 120 : 190, torusScale: 2.29 });
+  worker.postMessage({ count: portrait() || lowPower ? 2000 : 3600, terrainRes: portrait() || lowPower ? 120 : 190, torusScale: 2.29 });
   document.fonts.load('620 118px "Martian Mono"').finally(() => stage.buildDigits('620 118px "Martian Mono", ui-monospace, monospace'));
 
   // scroll length: holds get more distance than transformations (see time.ts)

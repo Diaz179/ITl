@@ -17,6 +17,10 @@ export interface BuildResult {
   routeLen: number;
 }
 
+// film-thickness bias per excavator part (nm): tracks and bucket run blue, the house gold, the boom bronze-purple
+const PART_FILM = [58, 58, 0, 18, 8, -16, 30, 34, 42, 62];
+const STRIDE = 19;
+
 self.onmessage = (e: MessageEvent<BuildRequest>) => {
   const { count, terrainRes, torusScale } = e.data;
   const exc = sampleSurface(excavatorParts(), count, 7);
@@ -30,11 +34,11 @@ self.onmessage = (e: MessageEvent<BuildRequest>) => {
   const excOrder = exc.points.map((s, i) => ({ i, k: Math.hypot(s.p[0] - beacon[0], (s.p[1] - beacon[1]) * 0.8, s.p[2] - beacon[2]) }));
   excOrder.sort((a, b) => a.k - b.k);
   const n = Math.min(tor.points.length, exc.points.length);
-  const out = new Float32Array(n * 18);
+  const out = new Float32Array(n * STRIDE);
   for (let j = 0; j < n; j++) {
     const a = tor.points[torusOrder[j].i];
     const b = exc.points[excOrder[j].i];
-    const o = j * 18;
+    const o = j * STRIDE;
     out.set([a.p[0] / torusScale, a.p[1] / torusScale, a.p[2] / torusScale], o);
     out.set(a.n, o + 3);
     out.set(b.p, o + 6);
@@ -42,9 +46,10 @@ self.onmessage = (e: MessageEvent<BuildRequest>) => {
     out.set([r() * 2 - 1, r() * 2 - 1, r() * 2 - 1, r()], o + 12);
     // dispersal travels from the bucket tip to the counterweight
     const dis = Math.min(1, Math.max(0, (2.25 - b.p[0]) / 3.35 + (r() - 0.5) * 0.12 + (1.7 - b.p[1]) * 0.05));
-    out.set([j / Math.max(1, n - 1), dis], o + 16);
+    out.set([j / Math.max(1, n - 1), dis, PART_FILM[b.k ?? 2] ?? 0], o + 16);
   }
-  const size = 0.4 * Math.min(exc.spacing, tor.spacing);
+  // circumradius under half the Poisson spacing: neighbouring facets never touch
+  const size = 0.44 * Math.min(exc.spacing, tor.spacing);
   const rt = route();
   const terr = terrainMesh(terrainRes, rt, 4.0, -1.0, 22);
   let coverU = 1;

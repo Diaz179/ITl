@@ -4,7 +4,7 @@
  */
 import { m4, v3, type M4, type V3 } from './gl/core';
 import { routeAt, type Route } from './gl/geometry';
-import { anticipate, bounce, clamp, inCubic, inOutCubic, inOutSine, lerp, range, settle, smooth } from './time';
+import { anticipate, bounce, clamp, inCubic, inOutCubic, inOutSine, lerp, ramp, range, settle, smooth } from './time';
 
 export const DEG = Math.PI / 180;
 export const R_RING = 0.62;
@@ -33,21 +33,25 @@ export interface RingState {
 const orbit1 = (T: number) => A0 + TAU * settle(range(T, 1.52, 2.55), 0.035);
 const orbit6 = (T: number) => A0 + TAU * settle(range(T, 17.62, 18.35), 0.035);
 
+/** Three-quarter pose of the shell (solved against the camera keys below: n·v ≈ 0.6, diagonal on screen). */
+const SHELL_RX = -52 * DEG;
+const SHELL_RY = 78 * DEG;
+
 export function ringState(T: number): RingState {
   if (T >= 17.3) {
     return { on: T >= 17.62, scale: 1, rx: 10 * DEG, ry: -22 * DEG, a0: A0, a1: orbit6(T), dissolve: -1 };
   }
   const toDial = anticipate(range(T, 3.5, 4.65), 0.15, 0.06);
-  const toLattice = anticipate(range(T, 6.95, 8.25), 0.06, 0.03);
-  const scale = 1 + 0.35 * settle(range(T, 3.6, 4.65), 0.06) - 0.035 * Math.sin(Math.PI * range(T, 3.5, 3.72)) + (TORUS_SCALE - 1.35) * inOutCubic(range(T, 7.0, 8.25));
+  const toShell = anticipate(range(T, 6.9, 8.15), 0.07, 0.035);
+  const scale = 1 + 0.35 * settle(range(T, 3.6, 4.65), 0.06) - 0.035 * Math.sin(Math.PI * range(T, 3.5, 3.72)) + (TORUS_SCALE - 1.35) * inOutCubic(range(T, 6.95, 8.15));
   return {
-    on: T >= 1.52 && T < 8.85,
+    on: T >= 1.52 && T < 8.4,
     scale,
-    rx: lerp(10 * DEG, 0, toDial) + 62 * DEG * toLattice,
-    ry: lerp(-22 * DEG, 0, toDial) + 14 * DEG * inOutCubic(range(T, 6.95, 8.3)),
+    rx: lerp(10 * DEG, 0, toDial) + SHELL_RX * toShell,
+    ry: lerp(-22 * DEG, 0, toDial) + SHELL_RY * toShell + 0.1 * ramp(T, 7.7, 8.7),
     a0: A0,
     a1: T < 2.6 ? orbit1(T) : A0 + TAU,
-    dissolve: T < 7.45 ? -1 : lerp(-0.12, 1.05, inOutSine(range(T, 7.45, 8.75))),
+    dissolve: T < 7.3 ? -1 : lerp(-0.12, 1.05, inOutSine(range(T, 7.3, 8.35))),
   };
 }
 
@@ -115,6 +119,9 @@ function bez(a: V3, b: V3, c: V3, d: V3, t: number): V3 {
 
 export const excModel = (() => m4.compose(m4.identity(), SITE, 0, 0, 0, 1))();
 export const beaconWorld = (): V3 => v3.add(BEACON, SITE);
+/** The dot shrinks to tracker size while the ring turns into the shell, so it stops hiding the formation. */
+const DOT_SHELL = 0.42;
+const dotShrink = (T: number) => lerp(1, DOT_SHELL, inOutCubic(range(T, 7.0, 8.15)));
 
 export function machineU(T: number) {
   return inOutSine(range(T, 12.35, 14.25));
@@ -135,7 +142,8 @@ export function dotState(T: number, r: Route | null): DotState {
     const l = dotLocal(T);
     const pos = m4.transform(m, [l.p[0], l.p[1], 0]);
     const tip = m4.transform(m, [l.p[0] + l.ax[0], l.p[1] + l.ax[1], 0]);
-    return { on: true, pos, axis: v3.norm(v3.sub(tip, pos)), stretch: l.st, radius: R_DOT * rs.scale * l.pop, glow: 0.42, gold: 0, onRing: true };
+    const shrink = T < 17.3 ? dotShrink(T) : 1;
+    return { on: true, pos, axis: v3.norm(v3.sub(tip, pos)), stretch: l.st, radius: R_DOT * rs.scale * l.pop * shrink, glow: 0.42 + 0.5 * (1 - shrink), gold: 0, onRing: true };
   }
   const B = beaconWorld();
   if (T < 9.9) {
@@ -144,7 +152,7 @@ export function dotState(T: number, r: Route | null): DotState {
     const P0 = m4.transform(ringModel(ringState(T)), [0, R_RING, 0]);
     const p = bez(P0, v3.add(P0, [0.2, 0.9, 0.4]), v3.add(B, [0, 0.9, 0]), B, e);
     const p2 = bez(P0, v3.add(P0, [0.2, 0.9, 0.4]), v3.add(B, [0, 0.9, 0]), B, Math.min(1, e + 0.02));
-    return { on: true, pos: p, axis: v3.norm(v3.sub(p2, p)), stretch: 1 + 0.25 * Math.sin(Math.PI * x), radius: lerp(R_DOT * TORUS_SCALE, 0.085, inOutCubic(x)), glow: 0.6, gold: 0, onRing: false };
+    return { on: true, pos: p, axis: v3.norm(v3.sub(p2, p)), stretch: 1 + 0.25 * Math.sin(Math.PI * x), radius: lerp(R_DOT * TORUS_SCALE * DOT_SHELL, 0.085, inOutCubic(x)), glow: lerp(0.9, 2.6, x), gold: 0, onRing: false };
   }
   if (T < 11.0) {
     const x = range(T, 9.9, 10.3);
@@ -196,17 +204,20 @@ const KEYS: Key[] = [
   K(0, [0, 0, 0], 3.6, -7, 2, 30, 0.46, -0.02, 1.9, 0.36),
   K(2.6, [0, 0, 0], 4.2, 0, 4, 30, 0.47, -0.03, 1.95, 0.38),
   K(3.5, [0, 0, 0], 4.2, 1, 4, 30, 0.47, -0.03, 1.95, 0.38),
-  K(4.7, [0, 0, 0], 3.25, 0, 0, 30, 0.35, 0, 1.9, 0.36),
-  K(6.8, [0, 0, 0], 3.2, 0, 0, 30, 0.35, 0, 1.9, 0.36),
-  K(8.3, [0, 0.05, 0], 6.2, 14, 30, 32, 0.24, -0.02, 1.75, 0.3),
-  K(8.9, [0, 0.05, 0], 6.1, 18, 30, 32, 0.24, -0.02, 1.75, 0.3),
-  K(10.1, [0, 0, 0], 5.9, 40, 19, 32, 0.22, -0.05, 1.8, 0.28),
-  K(11.0, [0, 0, 0], 5.8, 47, 20, 32, 0.22, -0.05, 1.8, 0.28),
+  // the dial: whole bezel and the index dot in frame, a slow push-in while the wheels count
+  K(4.7, [0, 0, 0], 4.75, 0, 0, 30, 0.33, -0.055, 1.85, 0.34),
+  K(6.8, [0, 0, 0], 4.6, 0, 0, 30, 0.33, -0.055, 1.85, 0.34),
+  // the shell: wider lens and a three-quarter angle, so near and far facets differ in scale
+  K(8.25, [0, 0.05, 0], 5.3, 18, 24, 38, 0.2, -0.02, 1.7, 0.28),
+  K(8.9, [0, 0.05, 0], 5.15, 22, 22, 38, 0.2, -0.02, 1.7, 0.28),
+  // the machine: low hero angle, slow orbit round the front quarter
+  K(10.1, [0, 0.02, 0], 4.75, 33, 14, 40, 0.27, -0.05, 1.75, 0.26),
+  K(11.0, [0, 0.02, 0], 4.6, 50, 16, 40, 0.27, -0.05, 1.75, 0.26),
   K(12.5, [3.0, -0.8, -0.5], 11, 4, 47, 34, 0.1, -0.14, 1.55, 0.12),
   K(14.8, [3.8, -0.8, -0.9], 10.6, 9, 49, 34, 0.1, -0.14, 1.55, 0.12),
   K(15.4, [5.8, 0.5, -1.9], 8.5, 9, 22, 34, 0.1, -0.05, 1.55, 0.2),
-  K(17.3, [0, 0, 0], 4.3, 0, 4, 30, 0.47, -0.02, 1.95, 0.38),
-  K(19.0, [0, 0, 0], 4.3, 0, 4, 30, 0.47, -0.02, 1.95, 0.38),
+  K(17.3, [0, 0, 0], 4.7, 0, 4, 30, 0.5, -0.02, 1.95, 0.38),
+  K(19.0, [0, 0, 0], 4.7, 0, 4, 30, 0.5, -0.02, 1.95, 0.38),
 ];
 
 function tangents(vals: number[], ts: number[]): number[] {
@@ -256,7 +267,7 @@ export function cameraAt(T: number, portrait: boolean): Cam {
 }
 
 // ── drum counter ────────────────────────────────────────
-export const WHEEL_X = [-0.262, -0.168, -0.074, 0.02, 0.114, 0.24];
+export const WHEEL_X = [-0.29, -0.186, -0.082, 0.022, 0.126, 0.264];
 export function counterValue(T: number) {
   return 3035.2 + 8.5 * inOutCubic(range(T, 4.75, 6.15));
 }
@@ -296,7 +307,8 @@ export function sceneWeights(T: number) {
 
 export const OIL = {
   handoff: 15.4,
-  mix: (T: number) => range(T, 15.0, 15.45) * (1 - range(T, 17.35, 17.8)),
+  // the land is gone before the vial arrives: the rising dot crosses a moment of black between them
+  mix: (T: number) => range(T, 15.15, 15.55) * (1 - range(T, 17.35, 17.8)),
   level: (T: number) => 70 + 12 * settle(range(T, 16.22, 16.8), 0.1),
   impact: 16.22,
 };
