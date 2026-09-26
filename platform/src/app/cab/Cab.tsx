@@ -110,7 +110,7 @@ function Help({ denied }: { denied: boolean }) {
           <li>
             Для работы в фоне установите{' '}
             <a className="underline" href="https://github.com/mikhailsilva/horisont/releases/download/android-2026.09.24/itles-android.apk">
-              приложение ITles для Android
+              приложение «Отсчёт» для Android
             </a>{' '}
             (фоновая служба) или Traccar Client из Google Play.
           </li>
@@ -464,7 +464,7 @@ export function Cab() {
         <p className="text-xs text-muted-foreground">
           {provider.current?.background
             ? 'Фоновая служба Android передаёт координаты и при выключенном экране. Без связи точки копятся и уходят автоматически.'
-            : 'Браузер передаёт координаты, только пока эта страница открыта и экран включён. Держите телефон на зарядке. Для фона: iPhone — Traccar Client, Android — приложение ITles или Traccar Client.'}
+            : 'Браузер передаёт координаты, только пока эта страница открыта и экран включён. Держите телефон на зарядке. Для фона: iPhone — Traccar Client, Android — приложение «Отсчёт» или Traccar Client.'}
         </p>
       </div>
     </div>

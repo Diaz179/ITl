@@ -1,6 +1,6 @@
 {
   "appId": "ru.itles.app",
-  "appName": "ITles",
+  "appName": "Отсчёт",
   "webDir": "www",
   "android": { "allowMixedContent": false, "useLegacyBridge": true },
   "server": { "androidScheme": "https" }

@@ -1,5 +1,21 @@
 # Vercel: состояние, безопасная проверка и переход на Git-деплой
 
+**Обновление 26.09.2026, 05:40 UTC:** production `itles.vercel.app` READY из
+`Diaz179/ITl@739671e` (PR #2: лендинг-фильм из сцен; только фронтенд). Тот же bootstrap:
+`build.sh` прошлого выпуска, изменён только SHA архива. Бандлы (`landing-D8yV6uLO.js`,
+`app-DLTjxXZa.js` и др.) совпали с локальной сборкой того же архива. Health 200 (`db=pg`),
+setup `needs_setup=false`, `/api/connectors` без авторизации 401, домены эмуляторов 200.
+Кандидат на мгновенный откат — деплой 26.09 01:43 UTC. БД не менялась.
+
+**Обновление 26.09.2026, 01:43 UTC:** production `itles.vercel.app` READY из
+`Diaz179/ITl@a45ca6be1aa0` (PR #2: лендинг-фильм, палитра, значки; только фронтенд).
+Тот же bootstrap через MCP `create_deployment`: `build.sh` предыдущего выпуска, изменён
+только SHA архива `codeload.github.com/Diaz179/ITl`. Архив собран локально заранее: имена
+бандлов (`landing-JBgsmrgJ.js`, `app-kRjCAOkK.js` и др.) совпали с production. После выпуска
+health 200 (`db=pg`), setup `needs_setup=false`, `/api/connectors` без авторизации 401,
+домены эмуляторов 200, `favicon.ico` 200. Кандидат на мгновенный откат — деплой
+25.09 22:39 UTC. БД не менялась.
+
 **Обновление 25.09.2026, 22:39 UTC:** production `itles.vercel.app` READY из
 `Diaz179/ITl@2a18962fa858` (редизайн «Отсчёт», только фронтенд). Bootstrap-деплой через
 MCP `create_deployment` с тем же `build.sh`; архив скачивается с

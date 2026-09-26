@@ -1,5 +1,6 @@
 // Offline shell for the web app / PWA. API calls always go to the network.
-const CACHE = 'itles-v2';
+// renamed with the rebrand: activation deletes the old cache and any old-brand shell in it
+const CACHE = 'otschet-v3';
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './app/', './favicon.svg', './manifest.webmanifest'])).then(() => self.skipWaiting()));
 });

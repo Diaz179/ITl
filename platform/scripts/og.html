@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <title>Отсчёт — карточка Open Graph</title>
+    <!--
+      1200×630 card for og:image. To render: put this file next to onest-var.woff2 and martian-mono-var.woff2
+      (src/brand/fonts), open it over http at a 1200×630 viewport and save a screenshot as public/og.png.
+    -->
+    <style>
+      @font-face { font-family: 'Onest'; src: url('onest-var.woff2') format('woff2'); font-weight: 300 900; }
+      @font-face { font-family: 'Martian Mono'; src: url('martian-mono-var.woff2') format('woff2'); font-weight: 300 800; font-stretch: 75% 112.5%; }
+      html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: #0a0907; }
+      .card {
+        position: relative; width: 1200px; height: 630px; overflow: hidden; color: #f2ebdd; font-family: 'Onest', sans-serif;
+        background:
+          radial-gradient(46% 70% at 84% 40%, rgb(214 168 78 / 0.15), transparent 62%),
+          radial-gradient(22% 30% at 88% 34%, rgb(255 74 20 / 0.12), transparent 70%),
+          #0a0907;
+      }
+      .beam { position: absolute; left: 880px; top: -80px; width: 260px; height: 760px; background: linear-gradient(180deg, rgb(240 184 90 / 0.12), transparent 72%); filter: blur(28px); transform: rotate(9deg); }
+      .brand { position: absolute; left: 72px; top: 62px; display: flex; align-items: center; gap: 14px; }
+      .brand .s { width: 32px; height: 32px; }
+      .brand .w { height: 22px; width: auto; }
+      .kicker { position: absolute; left: 72px; top: 196px; display: flex; align-items: center; gap: 12px; font: 600 15px/1 'Martian Mono', monospace; font-stretch: 87%; letter-spacing: 0.16em; text-transform: uppercase; color: #d6a84e; }
+      .kicker i { width: 9px; height: 9px; border-radius: 50%; background: #ff4a14; box-shadow: 0 0 14px #ff4a14; }
+      h1 { position: absolute; left: 66px; top: 228px; margin: 0; font-weight: 780; font-size: 104px; line-height: 0.92; letter-spacing: -0.05em; }
+      h1 em { font-style: normal; color: #ff4a14; }
+      .film { position: absolute; left: 72px; top: 450px; width: 400px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, #ecc587, #d6994c 22%, #b86440 40%, #943277 58%, #6d43ae 72%, #4d79d8 88%, #4aaaf0); }
+      p { position: absolute; left: 72px; top: 476px; width: 580px; margin: 0; font-size: 22px; line-height: 1.42; color: #c8bfae; }
+      .src { position: absolute; left: 72px; bottom: 46px; font: 500 13px/1 'Martian Mono', monospace; font-stretch: 87%; letter-spacing: 0.14em; text-transform: uppercase; color: #948b7c; }
+      .mark { position: absolute; left: 700px; top: 64px; width: 580px; height: 580px; color: #f2ebdd; filter: drop-shadow(0 34px 60px rgb(0 0 0 / 0.65)); }
+      .glow { position: absolute; left: 896px; top: 60px; width: 340px; height: 340px; border-radius: 50%; background: radial-gradient(closest-side, rgb(255 74 20 / 0.42), rgb(255 74 20 / 0.12) 55%, transparent); }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="beam"></div>
+      <div class="glow"></div>
+      <!-- the knockout is cut with a mask, so the warm light shows through the gap instead of a painted disc -->
+      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><defs><mask id="knock"><rect width="64" height="64" fill="#fff" /><circle cx="40.4" cy="17.45" r="8.8" fill="#000" /></mask></defs><circle cx="32" cy="32" r="16.8" fill="none" stroke="currentColor" stroke-width="7.2" mask="url(#knock)" /><circle cx="40.4" cy="17.45" r="6.4" fill="#ff4a14" /></svg>
+      <div class="brand">
+        <svg class="s" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="16.8" fill="none" stroke="#f2ebdd" stroke-width="7.2" /><circle cx="40.4" cy="17.45" r="8.8" fill="#0a0907" /><circle cx="40.4" cy="17.45" r="6.4" fill="#ff4a14" /></svg>
+        <svg class="w" viewBox="-4 -47 605.13 152" aria-hidden="true"><g fill="none" stroke="#f2ebdd"><path d="M9.5 50a40.5 40.5 0 1 0 81 0a40.5 40.5 0 1 0 -81 0M155 9.5V100M284.13 20.87A40.5 40.5 0 1 0 284.13 79.13M315.13 0V33A28 28 0 0 0 343.13 61H379.13M379.13 0V100M495.63 50A40.5 40.5 0 1 0 486.16 76.03M557.13 9.5V100" stroke-width="22" /><path d="M115 9.5H195M415.63 50H494.63M517.13 9.5H597.13" stroke-width="19" /></g><circle cx="436.13" cy="-31" r="12" fill="#f2ebdd" /><circle cx="474.13" cy="-31" r="12" fill="#ff4a14" /></svg>
+      </div>
+      <p class="kicker"><i></i>Телематика спецтехники</p>
+      <h1>Техника<br />на&nbsp;<em>связи.</em></h1>
+      <div class="film"></div>
+      <p>Моточасы, пробег, местоположение и&nbsp;масло любой спецтехники&nbsp;— из&nbsp;того, что уже стоит в&nbsp;машине.</p>
+      <div class="src">Трекер · платформа · телефон · счётчик</div>
+    </div>
+  </body>
+</html>
