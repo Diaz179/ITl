@@ -23,148 +23,157 @@
     <link rel="manifest" href="./manifest.webmanifest?v=4" />
     <link rel="preload" href="./src/brand/fonts/onest-var.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="./src/brand/fonts/martian-mono-var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./src/brand/fonts/unbounded-800.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./src/brand/fonts/noto-serif-display-italic.woff2" as="font" type="font/woff2" crossorigin />
     <meta name="theme-color" content="#0a0907" />
     <meta name="color-scheme" content="dark" />
     <script>
       (function () {
         var d = document.documentElement;
         try {
-          var c = document.createElement('canvas');
-          if (!c.getContext('webgl2')) return;
+          if (!document.createElement('canvas').getContext('webgl2')) return;
         } catch (e) {
           return;
         }
-        d.classList.add('film');
-        if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) d.classList.add('film--still');
-        // the document layout comes back if the film does not start
+        d.classList.add('reel');
+        if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) d.classList.add('reel--still');
+        // the document layout comes back if the film script never starts
         setTimeout(function () {
-          if (!d.classList.contains('film--live')) d.classList.remove('film', 'film--still');
-        }, 4500);
+          if (!d.classList.contains('reel--live')) d.classList.remove('reel', 'reel--still');
+        }, 8000);
       })();
     </script>
   </head>
   <body>
-    <a class="skip" href="#s1">К&nbsp;содержанию</a>
+    <a class="skip" href="#details" data-open-details>Текстовая версия</a>
 
-    <header class="bar">
-      <a class="bar__brand" href="./" data-logo data-restart aria-label="Отсчёт&nbsp;— к&nbsp;началу фильма"><svg class="logo-symbol" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><circle cx="32" cy="32" r="16.8" fill="none" stroke="currentColor" stroke-width="7.2"/><g class="dot-group"><circle cx="40.4" cy="17.45" r="8.8" fill="#0a0907"/><circle cx="40.4" cy="17.45" r="6.4" fill="var(--signal-graphic, #ff4a14)"/></g></svg><svg class="logo-word" viewBox="-4 -47 605.13 152" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor"><path d="M9.5 50a40.5 40.5 0 1 0 81 0a40.5 40.5 0 1 0 -81 0M155 9.5V100M284.13 20.87A40.5 40.5 0 1 0 284.13 79.13M315.13 0V33A28 28 0 0 0 343.13 61H379.13M379.13 0V100M495.63 50A40.5 40.5 0 1 0 486.16 76.03M557.13 9.5V100" stroke-width="22"/><path d="M115 9.5H195M415.63 50H494.63M517.13 9.5H597.13" stroke-width="19"/></g><circle cx="436.13" cy="-31" r="12" fill="currentColor"/><circle cx="474.13" cy="-31" r="12" fill="var(--signal-graphic, #ff4a14)"/></svg></a>
-      <nav class="bar__nav" aria-label="Сайт">
-        <button class="bar__link" type="button" data-open-details aria-controls="details">Подробности</button>
-        <a class="btn btn--signal btn--sm" href="./app/" data-vt-cta>Войти</a>
-      </nav>
-    </header>
-
-    <main id="film" class="film-root">
+    <main id="reel" class="reel-root" aria-label="Отсчёт&nbsp;— фильм о&nbsp;продукте. Стрелки, прокрутка или свайп переключают сцены">
+      <h1 class="sr-only">Масло, моточасы и&nbsp;местоположение любой спецтехники&nbsp;— из&nbsp;того, что уже стоит в&nbsp;машине</h1>
       <canvas class="stage" aria-hidden="true"></canvas>
-      <div class="brand-still" aria-hidden="true" data-still-logo><svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><circle cx="32" cy="32" r="16.8" fill="none" stroke="currentColor" stroke-width="7.2"/><g class="dot-group"><circle cx="40.4" cy="17.45" r="8.8" fill="#0a0907"/><circle cx="40.4" cy="17.45" r="6.4" fill="var(--signal-graphic, #ff4a14)"/></g></svg></div>
 
-      <!-- 01 · the dot is born, the ring is drawn -->
-      <section class="scene s1" id="s1" data-scene="1" aria-labelledby="s1-h">
-        <div class="copy">
-          <p class="kicker" data-fx="fade" data-in="1.75" data-out="3.45"><span class="live" aria-hidden="true"></span>Телематика спецтехники</p>
-          <h1 id="s1-h" class="title title--hero" data-fx="rise" data-in="1.9" data-out="3.45">Масло, моточасы и&nbsp;местоположение любой спецтехники</h1>
-          <p class="lead" data-fx="fade" data-in="2.25" data-out="3.4">Из&nbsp;того, что уже стоит в&nbsp;машине: трекер, CAN-шина двигателя, платформа мониторинга, телефон.</p>
-          <div class="cta" data-fx="fade" data-in="2.4" data-out="3.35">
-            <a class="btn btn--signal btn--lg" href="./app/" data-magnetic>Открыть кабинет <span class="btn__arrow" aria-hidden="true">→</span></a>
-            <button class="btn btn--ghost btn--lg" type="button" data-open-details aria-controls="details" data-magnetic>Подробности</button>
+      <!-- 01 · the point the count starts from -->
+      <section class="sc s0 is-css" data-sc="0" aria-label="Отсчёт">
+        <div class="s0-stage" aria-hidden="true">
+          <span class="s0-thin"></span>
+          <div class="s0-orbit">
+            <svg viewBox="-100 -100 200 200"><path id="s0-orbit-path" d="M0,-80A80,80 0 1,1 -0.01,-80" fill="none" /><text><textPath href="#s0-orbit-path" textLength="500" lengthAdjust="spacing">ОТСЧЁТ · МОТОЧАСЫ · ПРОБЕГ · МЕСТОПОЛОЖЕНИЕ · МАСЛО ·</textPath></text></svg>
           </div>
-        </div>
-        <p class="hint" data-fx="hint" data-in="2.5" data-out="3.0" aria-hidden="true"><span class="hint__wheel"></span>Листайте&nbsp;— это фильм</p>
-      </section>
-
-      <!-- 02 · the machine already counts -->
-      <section class="scene s2" id="s2" data-scene="2" aria-labelledby="s2-h">
-        <div class="copy">
-          <p class="eyebrow" data-fx="fade" data-in="4.0" data-out="6.85"><span>02</span>Показания</p>
-          <h2 id="s2-h" class="title title--mono" data-fx="roll" data-in="4.15" data-out="6.85">Машина уже ведёт счёт.</h2>
-          <p class="body" data-fx="fade" data-in="4.7" data-out="6.8">Моточасы&nbsp;— на&nbsp;приборной панели и&nbsp;в&nbsp;блоке двигателя, координаты&nbsp;— в&nbsp;трекере. Отсчёт читает то, что уже есть, и&nbsp;показывает источник и&nbsp;время каждого значения.</p>
-        </div>
-        <ul class="orbit" aria-label="Источники данных">
-          <li data-fx="chip" data-i="0" data-in="4.5" data-out="6.8">трекер</li>
-          <li data-fx="chip" data-i="1" data-in="4.62" data-out="6.8">платформа</li>
-          <li data-fx="chip" data-i="2" data-in="4.74" data-out="6.8">телефон</li>
-          <li data-fx="chip" data-i="3" data-in="4.86" data-out="6.8">счётчик</li>
-        </ul>
-        <p class="dial-unit" data-fx="anchor" data-anchor="unit" data-in="4.8" data-out="6.8" aria-hidden="true">ч</p>
-        <p class="dial-note" data-fx="anchor" data-anchor="caption" data-in="5.0" data-out="6.8">пример показаний</p>
-      </section>
-
-      <!-- 03 · any machine: the signature particle formation -->
-      <section class="scene s3" id="s3" data-scene="3" aria-labelledby="s3-h">
-        <div class="copy">
-          <p class="eyebrow" data-fx="fade" data-in="8.9" data-out="11.2"><span>03</span>Техника</p>
-          <h2 id="s3-h" class="title title--flap">
-            <span class="visually-hidden">Любая спецтехника</span>
-            <span class="flap-line" data-fx="rise" data-in="9.0" data-out="11.25" aria-hidden="true">Любая</span>
-            <span class="flap" data-fx="flap" data-in="9.25" data-out="11.25" data-words="экскаватор|харвестер|лесовоз|трактор|спецтехника" data-at="9.3|9.72|10.08|10.4|10.7" aria-hidden="true">спецтехника</span>
-          </h2>
-          <p class="body" data-fx="fade" data-in="9.8" data-out="11.2">Харвестеры, лесовозы, тракторы, экскаваторы, погрузчики и&nbsp;комбайны&nbsp;— для владельцев техники, дистрибьюторов и&nbsp;FUCHS.</p>
+          <div class="s0-logo"><div class="s0-ring"><svg class="seg" style="--k:0" viewBox="0 0 64 64"><path d="M40.400 17.451A16.8 16.8 0 0 1 46.636 23.753"/></svg><svg class="seg" style="--k:1" viewBox="0 0 64 64"><path d="M46.549 23.600A16.8 16.8 0 0 1 48.799 32.176"/></svg><svg class="seg" style="--k:2" viewBox="0 0 64 64"><path d="M48.800 32.000A16.8 16.8 0 0 1 46.460 40.552"/></svg><svg class="seg" style="--k:3" viewBox="0 0 64 64"><path d="M46.549 40.400A16.8 16.8 0 0 1 40.247 46.636"/></svg><svg class="seg" style="--k:4" viewBox="0 0 64 64"><path d="M40.400 46.549A16.8 16.8 0 0 1 31.824 48.799"/></svg><svg class="seg" style="--k:5" viewBox="0 0 64 64"><path d="M32.000 48.800A16.8 16.8 0 0 1 23.448 46.460"/></svg><svg class="seg" style="--k:6" viewBox="0 0 64 64"><path d="M23.600 46.549A16.8 16.8 0 0 1 17.364 40.247"/></svg><svg class="seg" style="--k:7" viewBox="0 0 64 64"><path d="M17.451 40.400A16.8 16.8 0 0 1 15.201 31.824"/></svg><svg class="seg" style="--k:8" viewBox="0 0 64 64"><path d="M15.200 32.000A16.8 16.8 0 0 1 17.540 23.448"/></svg><svg class="seg" style="--k:9" viewBox="0 0 64 64"><path d="M17.451 23.600A16.8 16.8 0 0 1 23.753 17.364"/></svg><svg class="seg" style="--k:10" viewBox="0 0 64 64"><path d="M23.600 17.451A16.8 16.8 0 0 1 32.176 15.201"/></svg><svg class="seg" style="--k:11" viewBox="0 0 64 64"><path d="M32.000 15.200A16.8 16.8 0 0 1 40.552 17.540"/></svg></div><svg class="s0-dot" viewBox="0 0 64 64"><circle class="s0-knock" cx="40.4" cy="17.45" r="8.8" /><circle class="s0-dotc" cx="40.4" cy="17.45" r="6.4" /></svg></div>
         </div>
       </section>
 
-      <!-- 04 · no coverage in the forest -->
-      <section class="scene s4" id="s4" data-scene="4" aria-labelledby="s4-h">
-        <div class="copy">
-          <p class="eyebrow" data-fx="fade" data-in="12.4" data-out="14.9"><span>04</span>Без связи</p>
-          <h2 id="s4-h" class="title title--signal">
-            <span class="line" data-fx="scan" data-in="12.55" data-out="14.9">В&nbsp;лесу <span class="glitch">нет сети.</span></span>
-            <span class="line" data-fx="tune" data-in="13.75" data-out="14.9">Данные не&nbsp;теряются.</span>
-          </h2>
-          <dl class="stat" data-fx="fade" data-in="13.9" data-out="14.9">
-            <div><dt><b data-fx="count" data-from="5425" data-to="0" data-in="13.9" data-dur="0.55">0</b> из&nbsp;5&nbsp;425</dt><dd>точек потеряно на&nbsp;пути трекер → сервер</dd></div>
-          </dl>
-          <p class="method" data-fx="fade" data-in="14.15" data-out="14.9">Модельный стенд: реальные протоколы трекеров, моделируемые машины.</p>
+      <!-- 02 · the name -->
+      <section class="sc s1" data-sc="1" aria-labelledby="s1-h">
+        <h2 id="s1-h" class="sr-only">Отсчёт&nbsp;— телематика спецтехники</h2>
+        <p class="pin mono s1-l" data-p="s1l" aria-hidden="true">01&nbsp;— отсчёт</p>
+        <p class="pin mono s1-r" data-p="s1r" aria-hidden="true">моточасы · пробег · место · масло</p>
+        <div class="pin s1-u" data-p="s1u" aria-hidden="true">
+          <p class="it"><span class="m"><span class="mi">телематика спецтехники</span></span></p>
+          <p class="mono">из&nbsp;того, что уже стоит в&nbsp;машине</p>
         </div>
-        <p class="tag-follow" data-fx="machine" data-in="12.45" data-out="14.35" aria-hidden="true"><i></i><span data-mem-state>нет сети · копим</span><b data-mem>0</b></p>
       </section>
 
-      <!-- 05 · oil -->
-      <section class="scene s5" id="s5" data-scene="5" aria-labelledby="s5-h">
-        <div class="copy">
-          <p class="eyebrow" data-fx="fade" data-in="15.35" data-out="17.35"><span>05</span>Масло</p>
-          <h2 id="s5-h" class="title title--oil">
-            <span class="oil-word" data-fx="liquid" data-in="15.45" data-out="17.4">Масло</span>
-            <span class="oil-sub" data-fx="rise" data-in="15.75" data-out="17.4">&nbsp;— главное для FUCHS</span>
-          </h2>
-          <dl class="readouts" data-fx="fade" data-in="16.15" data-out="17.35">
-            <div><dt>уровень</dt><dd><b data-fx="count" data-from="70" data-to="82" data-in="16.22" data-dur="0.6">70</b>&nbsp;%</dd></div>
-            <div><dt>температура</dt><dd><b data-fx="count" data-from="61" data-to="88" data-in="16.3" data-dur="0.8">88</b>&nbsp;°C</dd></div>
-            <div><dt>давление</dt><dd><b data-fx="count" data-from="2.1" data-to="3.4" data-in="16.36" data-dur="0.8" data-digits="1">3,4</b>&nbsp;бар</dd></div>
-            <div><dt>вода</dt><dd><b data-fx="count" data-from="40" data-to="120" data-in="16.42" data-dur="0.8">120</b>&nbsp;ppm</dd></div>
-          </dl>
-          <p class="body" data-fx="fade" data-in="16.45" data-out="17.35">Кабинет сам находит доливы и&nbsp;считает расход на&nbsp;100&nbsp;моточасов.</p>
-          <p class="method" data-fx="fade" data-in="16.55" data-out="17.35">Пример показаний. Проверка на&nbsp;физическом датчике впереди.</p>
-        </div>
-        <p class="topup" data-fx="vial" data-in="16.25" data-out="17.3" aria-hidden="true">долив +12&nbsp;п.&nbsp;п.</p>
+      <!-- 03 · four ways in -->
+      <section class="sc s2" data-sc="2" aria-labelledby="s2-h">
+        <h2 id="s2-h" class="pin it s2-h" data-p="s2h"><span class="m"><span class="mi">Четыре пути к&nbsp;данным.</span></span></h2>
+        <p class="pin mono s2-note" data-p="s2note">то, что уже стоит в&nbsp;машине · без нового оборудования</p>
+        <ol class="s2-rows">
+          <li class="pin" data-p="row0"><span class="mono idx">01</span><b>трекер</b><span class="mono sub">EGTS · Wialon IPS · Galileosky</span></li>
+          <li class="pin" data-p="row1"><span class="mono idx">02</span><b>платформа</b><span class="mono sub">АвтоГРАФ · Wialon · Traccar · ISO&nbsp;15143-3</span></li>
+          <li class="pin" data-p="row2"><span class="mono idx">03</span><b>телефон в&nbsp;кабине</b><span class="mono sub">код из&nbsp;6&nbsp;цифр · пишет и&nbsp;без сети</span></li>
+          <li class="pin" data-p="row3"><span class="mono idx">04</span><b>счётчик</b><span class="mono sub">фото показаний&nbsp;— эталон моточасов</span></li>
+        </ol>
+        <p class="pin mono s2-b" data-p="s2b" aria-hidden="true">кабинет →</p>
+        <p class="pin mono s2-off" data-p="s2off" aria-hidden="true">нет сети</p>
       </section>
 
-      <!-- 06 · end card -->
-      <section class="scene s6" id="s6" data-scene="6" aria-labelledby="s6-h">
-        <div class="copy">
-          <h2 id="s6-h" class="title title--end" data-fx="track" data-in="17.8">Отсчёт пошёл.</h2>
-          <p class="lead" data-fx="fade" data-in="18.05">Подключите первую машину тем, что уже есть: трекером, платформой или телефоном.</p>
-          <div class="cta" data-fx="fade" data-in="18.15">
-            <a class="btn btn--signal btn--lg" href="./app/" data-magnetic>Открыть кабинет <span class="btn__arrow" aria-hidden="true">→</span></a>
-            <a class="btn btn--ghost btn--lg" href="./app/#/cab" data-magnetic>Телефон в&nbsp;кабине</a>
+      <!-- 04 · the readings -->
+      <section class="sc s3" data-sc="3" aria-labelledby="s3-h">
+        <h2 id="s3-h" class="sr-only">Моточасы, масло, местоположение и&nbsp;пробег&nbsp;— в&nbsp;одном кабинете</h2>
+        <p class="pin mono s3-form" data-p="s3form" aria-hidden="true">форма: <span data-s3-form>циферблат</span></p>
+        <p class="pin mono s3-data" data-p="s3data" aria-hidden="true">моточасы · из&nbsp;ЭБУ или по&nbsp;фото счётчика</p>
+        <p class="pin it s3-word" data-p="s3word" aria-hidden="true"><span class="m s3-stack"><span class="mi" data-w="a">моточасы</span><span class="mi" data-w="b">моточасы</span></span></p>
+      </section>
+
+      <!-- 05 · any machine: the facet shell -->
+      <section class="sc s4" data-sc="4" aria-labelledby="s4-h">
+        <h2 id="s4-h" class="pin it s4-h" data-p="s4h"><span class="m"><span class="mi">любая спецтехника</span></span></h2>
+        <p class="pin mono s4-list" data-p="s4list">экскаватор · харвестер · лесовоз · трактор</p>
+        <p class="pin mono s4-stats" data-p="s4stats" aria-hidden="true">граней <b data-facets>3&nbsp;200</b> · оболочка полая · объектив 38&nbsp;мм</p>
+      </section>
+
+      <!-- 06 · no network -->
+      <section class="sc s5" data-sc="5" aria-labelledby="s5-h">
+        <h2 id="s5-h" class="sr-only">Без связи точки копятся в&nbsp;памяти трекера или телефона и&nbsp;досылаются в&nbsp;зоне сети: 0 из&nbsp;5&nbsp;425 точек потеряно (модельный стенд)</h2>
+        <p class="pin mono s5-tag" data-p="s5tag" aria-hidden="true"><i></i><span data-s5-state>нет сети · в&nbsp;памяти</span> <b data-s5-n>0</b></p>
+        <div class="pin s5-big" data-p="s5big" aria-hidden="true">
+          <p class="s5-num"><span class="m"><span class="mi">0 <small>из</small> 5&nbsp;425</span></span></p>
+          <p class="it"><span class="m"><span class="mi">точек потеряно на&nbsp;пути трекер → сервер</span></span></p>
+          <p class="mono">модельный стенд: реальные протоколы, моделируемые машины</p>
+        </div>
+      </section>
+
+      <!-- 07 · rhythm -->
+      <section class="sc s6" data-sc="6" aria-labelledby="s6-h">
+        <h2 id="s6-h" class="sr-only">Моточасы. Пробег. Местоположение. Масло. Любая техника&nbsp;— на&nbsp;связи.</h2>
+      </section>
+
+      <!-- 08 · start -->
+      <section class="sc s7" data-sc="7" aria-labelledby="s7-h">
+        <h2 id="s7-h" class="sr-only">С&nbsp;чего начать</h2>
+        <p class="pin it s7-it" data-p="s7it"><span class="m"><span class="mi">телематика спецтехники</span></span></p>
+        <div class="s7-ui">
+          <ol class="s7-steps">
+            <li data-rise>
+              <span class="mono n">01</span>
+              <h3>Откройте кабинет</h3>
+              <p>Вход по&nbsp;логину. Новый пользователь&nbsp;— по&nbsp;коду приглашения, первый запуск&nbsp;— ключом установки.</p>
+            </li>
+            <li data-rise>
+              <span class="mono n">02</span>
+              <h3>Подключите то, что есть</h3>
+              <ul class="chips">
+                <li><b>трекер</b> EGTS, Wialon IPS, Galileosky</li>
+                <li><b>платформа</b> АвтоГРАФ, Wialon, Traccar, ISO&nbsp;15143-3</li>
+                <li><b>телефон</b> код из&nbsp;6&nbsp;цифр</li>
+              </ul>
+            </li>
+            <li data-rise>
+              <span class="mono n">03</span>
+              <h3>Загрузите показания</h3>
+              <ul class="chips">
+                <li><b>счётчик</b> моточасы или одометр, км</li>
+                <li><b>фото счётчика</b> с&nbsp;камеры телефона</li>
+                <li><b>фото машины</b> PNG, JPEG, WebP</li>
+              </ul>
+            </li>
+          </ol>
+          <div class="s7-cta" data-rise>
+            <a class="btn" href="./app/">Открыть кабинет <span aria-hidden="true">→</span></a>
+            <a class="btn btn--ghost" href="./app/#/cab">Телефон в&nbsp;кабине</a>
           </div>
-          <ul class="get" data-fx="fade" data-in="18.3" aria-label="Приложения">
-            <li><a href="https://github.com/mikhailsilva/horisont/releases/download/native-0.3.3-2026.09.25/itles-android-debug.apk">Android</a></li>
-            <li><a href="https://github.com/mikhailsilva/horisont/releases/download/native-0.3.3-2026.09.25/ITles-Windows-x64-0.3.3.zip">Windows</a></li>
-            <li><a href="./app/">iPhone и&nbsp;iPad</a></li>
-            <li><a href="./app/">Веб-кабинет</a></li>
-            <li><button type="button" data-open-details="downloads" aria-controls="details">Что важно знать</button></li>
+          <ul class="s7-apps mono" data-rise aria-label="Приложения">
+            <li><a href="https://github.com/mikhailsilva/horisont/releases/download/native-0.3.3-2026.09.25/itles-android-debug.apk">Android · APK</a></li>
+            <li><a href="https://github.com/mikhailsilva/horisont/releases/download/native-0.3.3-2026.09.25/ITles-Windows-x64-0.3.3.zip">Windows · ZIP</a></li>
+            <li><a href="./app/">iPhone и&nbsp;iPad · веб</a></li>
+            <li><button type="button" data-open-details="downloads">как установить ↗</button></li>
           </ul>
-          <button class="more" type="button" data-fx="fade" data-in="18.4" data-open-details aria-controls="details">Подробности и&nbsp;вопросы <span aria-hidden="true">↗</span></button>
         </div>
       </section>
 
-      <nav class="reel" aria-label="Главы фильма">
-        <p class="reel__time" aria-hidden="true"><b data-timecode>00:00</b><span data-chapter>01 · Точка</span></p>
-        <ol class="reel__track" data-chapters></ol>
-      </nav>
+      <div class="hud">
+        <i class="hud__c hud__c--tl"></i><i class="hud__c hud__c--tr"></i><i class="hud__c hud__c--bl"></i><i class="hud__c hud__c--br"></i>
+        <p class="hud__tl mono"><a href="./" data-restart aria-label="Отсчёт&nbsp;— к&nbsp;началу"><b>отсчёт</b></a><span>телематика&nbsp;— 2026</span></p>
+        <div class="hud__tr mono">
+          <p><b data-hud-scene>01&nbsp;— Точка</b></p>
+          <p class="hud__nav"><button type="button" data-open-details>подробности</button><a href="./app/">войти&nbsp;→</a></p>
+        </div>
+        <p class="hud__bl mono" aria-hidden="true"><b data-hud-tc>00:00:00:00</b><span data-hud-fps>60 к/с</span></p>
+        <p class="hud__br mono" aria-hidden="true"><span>темп 128</span><span class="hud__beat" data-hud-beat><i></i><i></i><i></i><i></i></span><span class="hud__hint" data-hud-hint>листайте ↓</span></p>
+        <nav class="hud__bar" aria-label="Сцены"><span class="hud__fill" data-hud-fill></span><ol data-hud-chapters></ol></nav>
+      </div>
+      <p class="sr-only" aria-live="polite" data-live></p>
     </main>
-
-    <div class="track" aria-hidden="true"></div>
 
     <section id="details" class="details" aria-labelledby="details-h" tabindex="-1">
       <div class="details__scrim" data-close-details></div>

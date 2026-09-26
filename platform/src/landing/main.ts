@@ -1,34 +1,28 @@
-import './film.css';
-import { symbolSvg, wordmarkSvg } from '../brand/logo';
-import { Playhead } from './film/clock';
-import { CHAPTERS, D, INTRO_END, SCROLL_WEIGHT, filmAt, progressAt } from './film/time';
-import { TypeLayer } from './film/type';
-import { OIL } from './film/choreo';
-import type { Stage } from './film/gl/stage';
-import type { BuildResult } from './film/worker';
+import './reel.css';
+import { Atlas, type Glyph, type Word } from './reel/atlas';
+import { Overlay } from './reel/dom';
+import { Frame, Renderer, type Build } from './reel/gl/renderer';
+import { Navigator, bindInput } from './reel/nav';
+import { WORDS, draw, layout, setCoverU, setQuality, setType } from './reel/scenes';
+import { HOLDS } from './reel/time';
 
 const root = document.documentElement;
 const $ = <T extends Element = HTMLElement>(s: string, el: ParentNode = document) => el.querySelector<T>(s);
 const $$ = <T extends Element = HTMLElement>(s: string, el: ParentNode = document) => Array.from(el.querySelectorAll<T>(s));
-
-// ── brand marks ─────────────────────────────────────────
-for (const el of $$('[data-logo]')) el.innerHTML = symbolSvg({ className: 'logo-symbol', knockout: '#0a0907' }) + wordmarkSvg({ className: 'logo-word' });
-const still = $('[data-still-logo]');
-if (still) still.innerHTML = symbolSvg({ knockout: '#0a0907' });
 for (const el of $$('[data-year]')) el.textContent = String(new Date().getFullYear());
 
 // ── details dossier ─────────────────────────────────────
 const details = $('#details')!;
 let lastFocus: HTMLElement | null = null;
+const detailsOpen = () => root.classList.contains('details-open');
 function openDetails(section?: string) {
-  if (!root.classList.contains('film')) {
+  if (!root.classList.contains('reel')) {
     (section ? document.getElementById(section) : details)?.scrollIntoView({ behavior: 'smooth' });
     return;
   }
   lastFocus = document.activeElement as HTMLElement | null;
   root.classList.add('details-open');
-  document.body.style.overflow = 'hidden';
-  for (const el of $$('main, .bar')) el.setAttribute('inert', '');
+  for (const el of $$('main')) el.setAttribute('inert', '');
   details.setAttribute('role', 'dialog');
   details.setAttribute('aria-modal', 'true');
   const panel = $('.details__panel', details)!;
@@ -37,18 +31,21 @@ function openDetails(section?: string) {
   requestAnimationFrame(() => $<HTMLElement>('.details__close', details)?.focus({ preventScroll: true }));
 }
 function closeDetails() {
-  if (!root.classList.contains('details-open')) return;
+  if (!detailsOpen()) return;
   root.classList.remove('details-open');
-  document.body.style.overflow = '';
-  for (const el of $$('main, .bar')) el.removeAttribute('inert');
+  for (const el of $$('main')) el.removeAttribute('inert');
   details.removeAttribute('role');
   details.removeAttribute('aria-modal');
   lastFocus?.focus({ preventScroll: true });
 }
-for (const b of $$('[data-open-details]')) b.addEventListener('click', () => openDetails(b.dataset.openDetails || undefined));
+for (const b of $$('[data-open-details]'))
+  b.addEventListener('click', (e) => {
+    e.preventDefault();
+    openDetails(b.dataset.openDetails || undefined);
+  });
 for (const b of $$('[data-close-details]')) b.addEventListener('click', closeDetails);
 addEventListener('keydown', (e) => {
-  if (!root.classList.contains('details-open')) return;
+  if (!detailsOpen()) return;
   if (e.key === 'Escape') closeDetails();
   if (e.key === 'Tab') {
     const items = $$<HTMLElement>('a[href], button, summary', details).filter((el) => el.offsetParent !== null);
@@ -60,210 +57,241 @@ addEventListener('keydown', (e) => {
 });
 if (/^#(download|details)$/.test(location.hash)) requestAnimationFrame(() => openDetails(location.hash === '#download' ? 'downloads' : undefined));
 
-// ── magnetic buttons ────────────────────────────────────
-if (matchMedia('(hover: hover) and (prefers-reduced-motion: no-preference)').matches) {
-  for (const b of $$('[data-magnetic]')) {
-    b.addEventListener('pointermove', (e) => {
-      const r = b.getBoundingClientRect();
-      b.style.setProperty('--mx', `${((e.clientX - r.left) / r.width - 0.5) * 10}px`);
-      b.style.setProperty('--my', `${((e.clientY - r.top) / r.height - 0.5) * 8}px`);
-    });
-    b.addEventListener('pointerleave', () => {
-      b.style.setProperty('--mx', '0px');
-      b.style.setProperty('--my', '0px');
-    });
-  }
+function toDocument() {
+  root.classList.remove('reel', 'reel--still', 'reel--live', 'reel--gl');
 }
 
-if (root.classList.contains('film')) void startFilm();
+if (root.classList.contains('reel')) start();
 
-async function startFilm() {
-  const reduced = root.classList.contains('film--still');
+function start() {
+  // tells the watchdog in <head> that the film is booting
+  root.classList.add('reel--live');
+  const reduced = root.classList.contains('reel--still');
+  const debug = new URLSearchParams(location.search).has('debug');
   const canvas = $<HTMLCanvasElement>('canvas.stage')!;
-  const portrait = () => innerWidth / Math.max(1, innerHeight) < 0.85;
-  let stage: Stage;
+  let R: Renderer;
   try {
-    const { Stage } = await import('./film/gl/stage');
-    stage = new Stage(canvas, { portrait: portrait(), dpr: Math.min(devicePixelRatio || 1, portrait() ? 1.6 : 1.75), msaa: 4 });
+    R = new Renderer(canvas);
   } catch (e) {
-    console.warn('film disabled', e);
-    root.classList.remove('film', 'film--still');
-    return;
+    console.warn('reel disabled', e);
+    return toDocument();
   }
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    toDocument();
+  });
 
-  const worker = new Worker(new URL('./film/worker.ts', import.meta.url), { type: 'module' });
-  worker.onmessage = (e: MessageEvent<BuildResult>) => {
-    stage.setBuild(e.data);
+  const low = innerWidth / innerHeight < 0.8 || (navigator.hardwareConcurrency ?? 8) <= 4;
+  let build: Build | null = null;
+  const worker = new Worker(new URL('./reel/worker.ts', import.meta.url), { type: 'module' });
+  worker.onmessage = (e: MessageEvent<Build>) => {
+    build = e.data;
     worker.terminate();
   };
-  const lowPower = (navigator.hardwareConcurrency ?? 8) <= 4;
-  worker.postMessage({ count: portrait() || lowPower ? 2000 : 3600, terrainRes: portrait() || lowPower ? 120 : 190, torusScale: 2.29 });
-  document.fonts.load('620 118px "Martian Mono"').finally(() => stage.buildDigits('620 118px "Martian Mono", ui-monospace, monospace'));
+  worker.postMessage({ count: low ? 1800 : 3200, torusScale: 1.9, grid: low ? [70, 58] : [104, 86] });
 
-  // scroll length: holds get more distance than transformations (see time.ts)
-  root.style.setProperty('--len', (SCROLL_WEIGHT * 0.52).toFixed(2));
-  history.scrollRestoration = 'manual';
-  scrollTo(0, 0);
-
-  const type = new TypeLayer(document, stage);
-  const playhead = new Playhead(reduced ? INTRO_END : 0);
-  const reel = buildReel((t) => scrollToFilm(t));
-  root.classList.add('film--live');
-
-  const maxScroll = () => Math.max(1, document.documentElement.scrollHeight - innerHeight);
-  const progress = () => Math.min(1, Math.max(0, scrollY / maxScroll()));
-  function scrollToFilm(t: number) {
-    scrollTo({ top: progressAt(t) * maxScroll(), behavior: reduced ? 'auto' : 'smooth' });
+  // glyphs are rasterised a few per frame once the fonts are in, so the intro never hitches
+  const atlas = new Atlas();
+  const type = { wm: [] as Glyph[], wmScale: 1.3, words: {} as Record<string, Word> };
+  // one glyph per job; the frame loop runs jobs in 5 ms slices
+  const jobs: Array<() => void> = [];
+  for (let i = 0; i < 6; i++) jobs.push(() => (type.wm[i] = atlas.wordmarkLetter(type.wmScale, i)));
+  for (const w of WORDS) {
+    const font = w.cond ? "800 128px 'Martian Mono'" : "800 128px 'Unbounded'", stretch = w.cond ? 'condensed' : 'normal';
+    for (const ch of new Set(Array.from(w.word.replace(/\s/g, '')))) jobs.push(() => atlas.char(font, ch, stretch));
+    jobs.push(() => (type.words[w.word] = atlas.word(font, w.word, stretch)));
   }
-  $('[data-restart]')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    scrollToFilm(INTRO_END);
-  });
-  // keyboard users: focusing a control inside a scene brings that scene on screen
-  document.addEventListener('focusin', (e) => {
-    const scene = (e.target as HTMLElement).closest<HTMLElement>('.scene');
-    if (!scene || root.classList.contains('details-open')) return;
-    const t = type.liveTime(scene);
-    if (t !== null && !scene.classList.contains('is-live')) scrollToFilm(t);
-  });
+  let fontsIn = false;
+  Promise.all([
+    document.fonts.load("800 128px 'Unbounded'", 'МОТОЧАСЫ'),
+    document.fonts.load("800 128px 'Martian Mono'", 'МЕСТОПОЛОЖЕНИЕ'),
+    document.fonts.load("italic 400 32px 'Noto Serif Display'", 'телематика'),
+    document.fonts.load("500 12px 'Martian Mono'"),
+  ])
+    .catch(() => undefined)
+    .finally(() => (fontsIn = true));
 
-  addEventListener('pointermove', (e) => stage.setPointer((e.clientX / innerWidth) * 2 - 1, (e.clientY / innerHeight) * 2 - 1), { passive: true });
-
-  // reduced motion: rest on chapter frames, cross-dissolve between them
-  const chapterFor = (p: number) => {
-    let best = 0;
-    for (let i = 0; i < CHAPTERS.length; i++) if (p >= (progressAt(CHAPTERS[Math.max(0, i - 1)].t) + progressAt(CHAPTERS[i].t)) / 2 - 1e-6) best = i;
-    return best;
-  };
-  let chapter = -1;
-  let fadeStart = -1;
-
-  let sway = 0, swayV = 0, slosh = 0, sloshV = 0, lastV = 0;
+  const F = new Frame();
+  const dom = new Overlay(reduced);
+  const s0 = $('.s0')!;
+  let atlasUp = false, buildUp = false, warmed = false, film = false;
+  let nav: Navigator | null = null;
+  let manual: { T: number; now: number } | null = null;
   let last = performance.now();
-  let frames = 0, slow = 0, fast = 0;
-  let paused = false;
-  let manual: { T: number; time: number } | null = null;
-
-  function render(now: number) {
-    const dtRaw = Math.min(0.25, Math.max(0, (now - last) / 1000));
-    const dt = Math.min(0.05, dtRaw);
-    last = now;
-    let T: number;
-    let prevMix = 0;
-    if (manual) T = manual.T;
-    else if (reduced) {
-      const c = chapterFor(progress());
-      if (c !== chapter) {
-        if (chapter >= 0) {
-          stage.snapshot();
-          fadeStart = now;
-        }
-        chapter = c;
-      }
-      T = CHAPTERS[chapter].t - (chapter === CHAPTERS.length - 1 ? 0.001 : 0);
-      if (fadeStart >= 0) prevMix = Math.max(0, 1 - (now - fadeStart) / 350);
-    } else {
-      playhead.target = filmAt(progress());
-      if (!paused) playhead.update(dtRaw);
-      T = playhead.t;
+  const pr = Math.min(devicePixelRatio || 1, 1.5);
+  let res = 1, q = 1, win = 0, winN = 0, good = 0;
+  const frames: number[] = [];
+  const cpu: number[] = [];
+  const marks: Record<string, number> = {};
+  const mark = (k: string) => (marks[k] ??= Math.round(performance.now()));
+  const longtasks: Array<{ at: number; ms: number }> = [];
+  if (debug && 'PerformanceObserver' in window)
+    try {
+      new PerformanceObserver((l) => l.getEntries().forEach((e) => longtasks.push({ at: Math.round(e.startTime), ms: Math.round(e.duration) }))).observe({ type: 'longtask', buffered: true });
+    } catch {
+      /* not supported */
     }
-    // secondary motion: text leans with the playhead's speed, oil sloshes with its acceleration
-    const v = reduced || manual ? 0 : playhead.v;
-    swayV += (40 * (v - sway) - 7 * swayV) * dt;
-    sway += swayV * dt;
-    const acc = dt > 0 ? (v - lastV) / dt : 0;
-    lastV = v;
-    sloshV += (-30 * slosh - 3.2 * sloshV + acc * 0.9) * dt;
-    slosh += sloshV * dt;
 
-    stage.resize(portrait());
-    if (T > 14.9 && T < 15.9) {
-      const d = stage.dotAt(OIL.handoff);
-      stage.handoff = stage.projectAt(OIL.handoff, d.pos);
+  const introDone = () => reduced || s0.getAnimations({ subtree: true }).every((a) => a.playState === 'finished' || a.effect?.getTiming().iterations === Infinity);
+
+  const slow: Array<{ T: number; draw: number; gl: number; dom: number }> = [];
+  const render = (T: number, now: number, dt: number) => {
+    const W = innerWidth, H = innerHeight;
+    const t0 = debug ? performance.now() : 0;
+    R.resize(W, H, pr * res);
+    layout(W, H);
+    F.reset();
+    draw(F, T, now);
+    const t1 = debug ? performance.now() : 0;
+    R.render(F);
+    const t2 = debug ? performance.now() : 0;
+    dom.setHudDark(0.2126 * F.base[0] + 0.7152 * F.base[1] + 0.0722 * F.base[2]);
+    dom.update(T, now, dt, nav ? nav.K : 0);
+    if (debug) {
+      const t3 = performance.now();
+      if (t3 - t0 > 8) slow.push({ T: +T.toFixed(3), draw: +(t1 - t0).toFixed(1), gl: +(t2 - t1).toFixed(1), dom: +(t3 - t2).toFixed(1) });
     }
-    const time = manual ? manual.time : reduced ? 0 : now / 1000;
-    stage.frame({ T, time, sway: reduced ? 0 : sway, slosh: reduced ? 0 : slosh, pointer: [0, 0], still: reduced, prevMix });
-    type.update(T, reduced ? 0 : sway);
-    reel(T);
+  };
 
-    // adaptive resolution keeps weaker GPUs near 60 fps
-    if (!manual && !reduced) {
-      frames++;
-      if (dt > 0.026) slow++;
-      else if (dt < 0.0135) fast++;
-      if (frames >= 45) {
-        if (slow > 18 && stage.renderScale > 0.6) stage.renderScale = Math.max(0.6, stage.renderScale - 0.1);
-        else if (fast > 42 && stage.renderScale < 1) stage.renderScale = Math.min(1, stage.renderScale + 0.05);
-        frames = slow = fast = 0;
-      }
-    }
-  }
+  const go = (dir: 1 | -1) => {
+    if (!nav) return;
+    const n = nav;
+    const vt = (document as Document & { startViewTransition?: (cb: () => void) => unknown }).startViewTransition;
+    // reduced motion: calm cross-fades between the scenes' resting frames
+    if (reduced && vt) vt.call(document, () => (n.step(dir), render(n.T, 0, 0)));
+    else n.step(dir);
+  };
 
-  const loop = (now: number) => {
-    if (!document.hidden) render(now);
+  const loop = (nowMs: number) => {
     requestAnimationFrame(loop);
+    const dt = Math.min(0.1, Math.max(0, (nowMs - last) / 1000));
+    last = nowMs;
+    if (document.hidden) return;
+    const now = reduced ? 0 : nowMs / 1000;
+    if (!film) {
+      try {
+        R.poll();
+      } catch (e) {
+        console.warn(e);
+        return toDocument();
+      }
+      if (R.linked) mark('shadersLinked');
+      if (fontsIn) mark('fontsIn');
+      if (fontsIn && jobs.length) {
+        const t0 = performance.now();
+        // the intro runs on the compositor, so the main thread can spend most of each frame here
+        while (jobs.length && performance.now() - t0 < 10) jobs.shift()!();
+        if (!jobs.length) {
+          setType(type);
+          R.setAtlas(atlas);
+          atlasUp = true;
+          mark('atlasUp');
+        }
+      }
+      if (build && !buildUp) {
+        R.setBuild(build);
+        setCoverU(build.coverU);
+        const facets = $('[data-facets]');
+        if (facets) facets.textContent = build.count.toLocaleString('ru-RU').replace(/\u202f/g, '\u00a0');
+        buildUp = true;
+        mark('buildUp');
+      }
+      if (R.linked && atlasUp && buildUp && !warmed) {
+        layout(innerWidth, innerHeight);
+        R.resize(innerWidth, innerHeight, pr);
+        // real frames from every scene, so each pipeline state is built before it first appears
+        for (const T of [2.05, 4.6, 6.9, 9.5, 12.6, 14.6, 15.4, 16.3]) {
+          F.reset();
+          draw(F, T, now);
+          R.warm(F);
+        }
+        warmed = true;
+        mark('warmed');
+      }
+      if (R.linked && warmed) {
+        R.resize(innerWidth, innerHeight, pr);
+        layout(innerWidth, innerHeight);
+        F.reset();
+        draw(F, 0, now);
+        R.render(F);
+        root.classList.add('reel--gl');
+      }
+      if (warmed && introDone()) {
+        film = true;
+        mark('filmStart');
+        dom.takeover(now);
+        nav = new Navigator(HOLDS[0], 0, reduced);
+        nav.onTarget = (k) => dom.announce(k);
+        dom.onChapter = (k) => nav!.goTo(k);
+        bindInput($('#reel')!, go, () => detailsOpen() || !!manual);
+        $('[data-restart]')?.addEventListener('click', (e) => {
+          e.preventDefault();
+          nav!.goTo(1);
+        });
+        // the intro flows straight into the first scene
+        if (reduced) go(1);
+        else nav.step(1);
+      }
+      return;
+    }
+    const n = nav!;
+    let T: number;
+    if (manual) T = manual.T;
+    else {
+      n.update(dt);
+      T = n.T;
+    }
+    render(T, manual ? manual.now : now, dt);
+    if (debug) {
+      cpu.push(performance.now() - nowMs);
+      if (cpu.length > 1200) cpu.shift();
+      frames.push(dt * 1000);
+      if (frames.length > 1200) frames.shift();
+    }
+    // adaptive quality: drop resolution first, then facet count; recover slowly
+    if (!manual && !reduced) {
+      win += dt;
+      winN++;
+      if (winN >= 45) {
+        const avg = win / winN;
+        if (avg > 0.0195 && (res > 0.62 || q > 0.45)) {
+          if (res > 0.62) res = Math.max(0.62, res - 0.1);
+          else q = Math.max(0.45, q - 0.15);
+          setQuality(q);
+          good = 0;
+        } else if (avg < 0.0152 && ++good >= 4 && (res < 1 || q < 1)) {
+          if (q < 1) q = Math.min(1, q + 0.1);
+          else res = Math.min(1, res + 0.05);
+          setQuality(q);
+          good = 0;
+        }
+        win = 0;
+        winN = 0;
+      }
+    }
   };
   requestAnimationFrame(loop);
 
-  if (new URLSearchParams(location.search).has('debug')) {
+  if (debug)
     Object.assign(window, {
-      __film: {
-        state: () => ({ t: playhead.t, v: playhead.v, target: playhead.target, ready: stage.ready, scale: stage.renderScale }),
-        seek: (T: number, time = 1) => {
-          manual = { T, time };
-          render(performance.now());
+      __reel: {
+        seek: (T: number, now = 1) => {
+          manual = { T, now };
+          render(T, now, 0);
         },
-        free: () => {
-          manual = null;
+        free: () => (manual = null),
+        state: () => ({ film, T: nav?.T, K: nav?.K, rate: nav?.rate, res, q, linked: R.linked, atlasUp, buildUp }),
+        frames: () => {
+          const s = frames.slice().sort((a, b) => a - b);
+          const c = cpu.slice().sort((a, b) => a - b);
+          const p = (x: number) => s[Math.min(s.length - 1, Math.floor(s.length * x))] ?? 0;
+          const pc = (x: number) => +(c[Math.min(c.length - 1, Math.floor(c.length * x))] ?? 0).toFixed(2);
+          return { n: s.length, p50: p(0.5), p95: p(0.95), max: s[s.length - 1] ?? 0, over20: s.filter((x) => x > 20).length, over33: s.filter((x) => x > 33).length, cpuP50: pc(0.5), cpuP95: pc(0.95), cpuMax: pc(1), marks, longtasks };
         },
-        pause: (p = true) => {
-          paused = p;
-        },
-        step: (dt: number) => {
-          playhead.target = filmAt(progress());
-          playhead.update(dt);
-          return playhead.t;
-        },
-        stage,
+        resetFrames: () => ((frames.length = 0), (cpu.length = 0), (longtasks.length = 0)),
+        step: (d: 1 | -1) => go(d),
+        renderer: R,
+        slow: () => slow,
       },
     });
-  }
-}
-
-/** Chapter ticks and the timecode under the film. */
-function buildReel(go: (t: number) => void) {
-  const list = $('[data-chapters]')!;
-  const time = $('[data-timecode]')!;
-  const label = $('[data-chapter]')!;
-  const buttons = CHAPTERS.map((c, i) => {
-    const li = document.createElement('li');
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.innerHTML = `<span>${String(i + 1).padStart(2, '0')} · ${c.title}</span>`;
-    b.setAttribute('aria-label', `Глава ${i + 1}: ${c.title}`);
-    b.addEventListener('click', () => go(c.t));
-    li.append(b);
-    list.append(li);
-    return b;
-  });
-  const starts = CHAPTERS.map((c, i) => (i === 0 ? 0 : CHAPTERS[i - 1].t));
-  let lastText = '';
-  return (T: number) => {
-    const s = Math.floor(T);
-    const text = `00:${String(s).padStart(2, '0')},${Math.floor((T - s) * 10)}`;
-    if (text !== lastText) {
-      time.textContent = text;
-      lastText = text;
-    }
-    let active = 0;
-    CHAPTERS.forEach((c, i) => {
-      const fill = Math.min(1, Math.max(0, (T - starts[i]) / (c.t - starts[i])));
-      buttons[i].style.setProperty('--fill', fill.toFixed(3));
-      if (T >= starts[i]) active = i;
-    });
-    buttons.forEach((b, i) => b.setAttribute('aria-current', String(i === active)));
-    const next = `${String(active + 1).padStart(2, '0')} · ${CHAPTERS[active].title}`;
-    if (label.textContent !== next) label.textContent = next;
-    void D;
-  };
 }
