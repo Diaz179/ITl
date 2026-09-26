@@ -1,558 +1,268 @@
-import './landing.css';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { SplitText } from 'gsap/SplitText';
+import './film.css';
 import { symbolSvg, wordmarkSvg } from '../brand/logo';
-import type { Stage } from './gl/scene';
-
-gsap.registerPlugin(ScrollTrigger, SplitText);
+import { Playhead } from './film/clock';
+import { CHAPTERS, D, INTRO_END, SCROLL_WEIGHT, filmAt, progressAt } from './film/time';
+import { TypeLayer } from './film/type';
+import { OIL } from './film/choreo';
+import type { Stage } from './film/gl/stage';
+import type { BuildResult } from './film/worker';
 
 const root = document.documentElement;
-const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const mobile = matchMedia('(max-width: 759px)').matches;
 const $ = <T extends Element = HTMLElement>(s: string, el: ParentNode = document) => el.querySelector<T>(s);
 const $$ = <T extends Element = HTMLElement>(s: string, el: ParentNode = document) => Array.from(el.querySelectorAll<T>(s));
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-const ru = (v: number, digits: number) =>
-  v.toLocaleString('ru-RU', { minimumFractionDigits: digits, maximumFractionDigits: digits }).replace(/\u202f/g, '\u00a0');
 
-// ── brand marks ───────────────────────────────────────────
-for (const el of $$('[data-logo]')) el.innerHTML = symbolSvg({ className: 'logo-symbol' }) + wordmarkSvg({ className: 'logo-word' });
+// ── brand marks ─────────────────────────────────────────
+for (const el of $$('[data-logo]')) el.innerHTML = symbolSvg({ className: 'logo-symbol', knockout: '#07080b' }) + wordmarkSvg({ className: 'logo-word' });
+const still = $('[data-still-logo]');
+if (still) still.innerHTML = symbolSvg({ knockout: '#07080b' });
 for (const el of $$('[data-year]')) el.textContent = String(new Date().getFullYear());
 
-// ── theme: same storage key and semantics as the cabinet ──
-let stage: Stage | null = null;
-function applyTheme(theme: 'dark' | 'light') {
-  try {
-    localStorage.setItem('itles_theme', theme);
-  } catch {
-    // private mode: in-memory only
-  }
-  root.classList.toggle('dark', theme === 'dark');
-  $('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0b0c0a' : '#f3f1ea');
-  stage?.setTheme({ dark: theme === 'dark' });
-}
-for (const b of $$('[data-theme-toggle]')) {
-  const label = () => b.setAttribute('title', root.classList.contains('dark') ? 'Дневная тема' : 'Ночная тема');
-  label();
-  b.addEventListener('click', () => {
-    applyTheme(root.classList.contains('dark') ? 'light' : 'dark');
-    label();
-  });
-}
-
-// ── header: solid after the fold edge, hides while reading down ──
-const bar = $('[data-bar]');
-let lastY = scrollY;
-addEventListener(
-  'scroll',
-  () => {
-    const y = scrollY;
-    bar?.classList.toggle('is-solid', y > 24);
-    const hide = y > 480 && y > lastY + 4 && !bar?.contains(document.activeElement);
-    if (hide) bar?.classList.add('is-hidden');
-    else if (y < lastY - 4 || y < 480) bar?.classList.remove('is-hidden');
-    lastY = y;
-  },
-  { passive: true },
-);
-
-// ── manifesto words ───────────────────────────────────────
-const manifesto = $('[data-words]');
-const words: HTMLElement[] = [];
-if (manifesto) {
-  const nodes = Array.from(manifesto.childNodes);
-  manifesto.textContent = '';
-  for (const node of nodes) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      // regular spaces separate words; no-break spaces keep prepositions glued to their word
-      for (const part of (node.textContent ?? '').split(/( +)/)) {
-        if (!part) continue;
-        if (/^ +$/.test(part)) manifesto.append(part);
-        else {
-          const w = document.createElement('span');
-          w.className = 'w';
-          w.textContent = part;
-          manifesto.append(w);
-          words.push(w);
-        }
-      }
-    } else if (node instanceof HTMLElement) {
-      node.classList.add('w');
-      manifesto.append(node);
-      words.push(node);
-    }
-  }
-}
-
-// ── moto-hour drum ────────────────────────────────────────
-interface Drum {
-  set: (tenths: number) => void;
-  from: number;
-  to: number;
-}
-function buildDrum(el: HTMLElement): Drum {
-  const from = Math.round(Number(el.dataset.drum) * 10);
-  const to = Math.round(Number(el.dataset.drumTo ?? el.dataset.drum) * 10);
-  const digits = (el.dataset.drum ?? '0').replace('.', '').length;
-  const stat = $('.drum__static', el);
-  stat?.classList.add('visually-hidden');
-  const unit = $('.drum__unit', el);
-  const strips: HTMLElement[] = [];
-  for (let i = 0; i < digits; i++) {
-    if (i === digits - 1) {
-      const sep = document.createElement('span');
-      sep.className = 'drum__sep';
-      sep.setAttribute('aria-hidden', 'true');
-      sep.textContent = ',';
-      el.insertBefore(sep, unit);
-    }
-    const cell = document.createElement('span');
-    cell.className = 'drum__cell' + (i === digits - 1 ? ' drum__cell--tenth' : '');
-    cell.setAttribute('aria-hidden', 'true');
-    const strip = document.createElement('span');
-    strip.className = 'drum__strip';
-    for (let d = 0; d <= 10; d++) {
-      const s = document.createElement('span');
-      s.textContent = String(d % 10);
-      strip.append(s);
-    }
-    cell.append(strip);
-    el.insertBefore(cell, unit);
-    strips.push(strip);
-  }
-  const set = (v: number) => {
-    for (let i = 0; i < digits; i++) {
-      const k = digits - 1 - i;
-      const place = 10 ** k;
-      let d: number;
-      if (k === 0) d = v % 10;
-      else {
-        const lower = (v / 10 ** (k - 1)) % 10;
-        d = (Math.floor(v / place) % 10) + Math.max(0, lower - 9);
-      }
-      strips[i].style.transform = `translateY(${(-d * 100) / 11}%)`;
-    }
-    if (stat) stat.textContent = `${ru(v / 10, 1)} ч`;
-  };
-  set(from);
-  return { set, from, to };
-}
-const drumEl = $('[data-drum]');
-const drum = drumEl ? buildDrum(drumEl) : null;
-
-// ── ticker: two copies for a seamless run ────────────────
-const ticker = $('[data-ticker]');
-if (ticker) {
-  const dup = document.createElement('span');
-  dup.className = 'dup';
-  dup.setAttribute('aria-hidden', 'true');
-  dup.textContent = ' ' + ticker.textContent;
-  ticker.append(dup);
-}
-
-// ── odometry: deterministic GNSS jitter around a parked machine ──
-const odoPath = $<SVGPathElement>('.odo__naive');
-const odoGrid = $<SVGGElement>('.odo__grid');
-let odoLength = 0;
-if (odoPath && odoGrid) {
-  let s = 7;
-  const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647) * 2 - 1;
-  let x = 300,
-    y = 180;
-  const pts: string[] = [];
-  for (let i = 0; i < 520; i++) {
-    const jump = i % 97 === 0 ? 5 : 1;
-    x += (rnd() * 14 + (300 - x) * 0.07) * jump;
-    y += (rnd() * 12 + (180 - y) * 0.07) * jump;
-    pts.push(`${x.toFixed(1)} ${y.toFixed(1)}`);
-  }
-  odoPath.setAttribute('d', 'M' + pts.join('L'));
-  odoLength = odoPath.getTotalLength();
-  const ns = 'http://www.w3.org/2000/svg';
-  for (let gx = 0; gx <= 600; gx += 40) {
-    const l = document.createElementNS(ns, 'line');
-    l.setAttribute('x1', String(gx));
-    l.setAttribute('x2', String(gx));
-    l.setAttribute('y1', '0');
-    l.setAttribute('y2', '360');
-    odoGrid.append(l);
-  }
-  for (let gy = 0; gy <= 360; gy += 40) {
-    const l = document.createElementNS(ns, 'line');
-    l.setAttribute('x1', '0');
-    l.setAttribute('x2', '600');
-    l.setAttribute('y1', String(gy));
-    l.setAttribute('y2', String(gy));
-    odoGrid.append(l);
-  }
-}
-const odoKm = $('[data-odo-km]');
-
-// ── oil tube: level from scroll, surface from a damped spring ──
-const tube = $('[data-tube]');
-const oilPath = $<SVGPathElement>('[data-oil-path]');
-const oilLevelEl = $('[data-oil-level]');
-const topup = $('[data-topup]');
-const oil = { level: 0.7, tilt: 0, vel: 0, target: 0, phase: 0, running: false };
-function drawOil() {
-  if (!oilPath) return;
-  const top = 520 * (1 - oil.level);
-  const amp = 4 + Math.abs(oil.vel) * 60;
-  let d = `M0 ${top + oil.tilt * -60}`;
-  for (let x = 0; x <= 200; x += 10) {
-    const y = top + oil.tilt * ((x - 100) / 100) * 60 + Math.sin(x / 26 + oil.phase) * amp * 0.5 + Math.sin(x / 11 - oil.phase * 1.7) * amp * 0.2;
-    d += ` L${x} ${y.toFixed(2)}`;
-  }
-  oilPath.setAttribute('d', d + ' L200 520 L0 520 Z');
-}
-function oilLoop() {
-  if (!oil.running) return;
-  const k = 0.06;
-  oil.vel += (oil.target - oil.tilt) * k;
-  oil.vel *= 0.9;
-  oil.tilt += oil.vel;
-  oil.phase += 0.045;
-  drawOil();
-  requestAnimationFrame(oilLoop);
-}
-function setOilLevel(p: number) {
-  const topped = p > 0.56;
-  const level = topped ? 0.7 : 0.7 - 0.12 * clamp01(p / 0.56);
-  if (topped !== topup?.classList.contains('is-on')) {
-    topup?.classList.toggle('is-on', topped);
-    if (topped) oil.vel -= 0.08;
-  }
-  oil.level = level;
-  if (oilLevelEl) oilLevelEl.textContent = String(Math.round(level * 100));
-  if (!oil.running) drawOil();
-}
-drawOil();
-
-// ── static fallbacks for reduced motion ───────────────────
-if (reduced) {
-  drum?.set(drum.to);
-  if (odoKm) odoKm.textContent = '59,6';
-  topup?.classList.add('is-on');
-}
-
-// ── motion ────────────────────────────────────────────────
-if (!reduced) {
-  root.classList.add('motion-ready');
-  const intro = gsap.timeline({ defaults: { ease: 'expo.out' } });
-  const word = $$<SVGPathElement>('.bar .logo-word path');
-  for (const p of word) {
-    const len = p.getTotalLength();
-    p.style.setProperty('--len', String(len));
-    p.style.strokeDashoffset = String(len);
-  }
-  intro
-    .to(word, { strokeDashoffset: 0, duration: 1.3, ease: 'power2.inOut', stagger: 0.12 }, 0.1)
-    .from('.bar .logo-word circle', { scale: 0, transformOrigin: '50% 50%', duration: 0.6, ease: 'back.out(3)', stagger: 0.14 }, 0.9)
-    .from('.bar .logo-symbol', { rotate: -120, scale: 0.6, opacity: 0, transformOrigin: '50% 50%', duration: 1.2 }, 0)
-    .to('[data-intro-lines] .line > span', { y: 0, duration: 1.2, stagger: 0.09 }, 0.15)
-    .to('[data-intro]', { opacity: 1, y: 0, duration: 1, stagger: 0.1 }, 0.35)
-    .to('.hero__strip', { opacity: 1, y: 0, duration: 1 }, 0.7);
-
-  // hero text drifts up and away as the scene takes over
-  gsap.to('.hero__grid', {
-    yPercent: -12,
-    opacity: 0.2,
-    ease: 'none',
-    scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true },
-  });
-
-  // section headings: line masks, re-split on resize
-  for (const h of $$('[data-reveal]')) {
-    gsap.set(h, { opacity: 1 });
-    SplitText.create(h, {
-      type: 'lines',
-      mask: 'lines',
-      autoSplit: true,
-      // keep no-break spaces: short prepositions must stay with their word
-      reduceWhiteSpace: false,
-      onSplit: (self) =>
-        gsap.from(self.lines, {
-          yPercent: 110,
-          duration: 1,
-          ease: 'expo.out',
-          stagger: 0.08,
-          scrollTrigger: { trigger: h, start: 'top 88%', once: true },
-        }),
-    });
-  }
-
-  // manifesto: words light up with the scroll
-  if (manifesto && words.length) {
-    ScrollTrigger.create({
-      trigger: '.manifesto',
-      start: 'top 70%',
-      end: 'bottom 110%',
-      onUpdate: (st) => {
-        const lit = st.progress * (words.length + 6);
-        words.forEach((w, i) => w.style.setProperty('--o', String(0.16 + 0.84 * clamp01(lit - i))));
-      },
-    });
-  }
-
-  // ticker
-  if (ticker) gsap.fromTo(ticker, { xPercent: 0 }, { xPercent: -38, ease: 'none', scrollTrigger: { trigger: '.ticker', start: 'top bottom', end: 'bottom top', scrub: 0.3 } });
-
-  // drum rolls through one shift while the cluster passes
-  if (drum) {
-    ScrollTrigger.create({
-      trigger: '[data-cluster]',
-      start: 'top 85%',
-      end: 'bottom 30%',
-      scrub: 0.4,
-      onUpdate: (st) => drum.set(drum.from + (drum.to - drum.from) * st.progress),
-    });
-  }
-  for (const el of $$('[data-count]')) {
-    const target = Number(el.dataset.count);
-    const digits = Number(el.dataset.decimals ?? 0);
-    const o = { v: 0 };
-    gsap.to(o, {
-      v: target,
-      duration: 1.4,
-      ease: 'expo.out',
-      scrollTrigger: { trigger: el, start: 'top 90%', once: true },
-      onUpdate: () => (el.textContent = ru(o.v, digits)),
-    });
-  }
-
-  // sources: the wire is drawn and each stop lights up
-  const wire = $<SVGPathElement>('.paths__wire path');
-  if (wire) gsap.fromTo(wire, { strokeDashoffset: 1000 }, { strokeDashoffset: 0, ease: 'none', scrollTrigger: { trigger: '[data-paths]', start: 'top 70%', end: 'bottom 70%', scrub: 0.3 } });
-  for (const p of $$('.path')) {
-    ScrollTrigger.create({ trigger: p, start: 'top 68%', onToggle: (st) => p.classList.toggle('is-lit', st.isActive || st.progress > 0), end: 'max' });
-  }
-
-  // odometry: the naive track keeps adding kilometres while the true point stays put
-  if (odoPath && odoLength) {
-    odoPath.style.strokeDasharray = String(odoLength);
-    gsap.fromTo(
-      odoPath,
-      { strokeDashoffset: odoLength },
-      {
-        strokeDashoffset: 0,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: '.odo__plot',
-          start: 'top 80%',
-          end: 'bottom 35%',
-          scrub: 0.3,
-          onUpdate: (st) => odoKm && (odoKm.textContent = ru(59.6 * st.progress, 1)),
-        },
-      },
-    );
-  }
-  for (const s of $$('.versus__nums s')) {
-    gsap.fromTo(s, { '--strike': 0 }, { '--strike': 1, duration: 0.7, ease: 'power3.inOut', scrollTrigger: { trigger: s, start: 'top 85%', once: true } });
-  }
-
-  // oil
-  if (tube) {
-    ScrollTrigger.create({ trigger: '.oil', start: 'top 70%', end: 'bottom 60%', scrub: true, onUpdate: (st) => setOilLevel(st.progress) });
-    ScrollTrigger.create({
-      trigger: '.oil',
-      start: 'top bottom',
-      end: 'bottom top',
-      onToggle: (st) => {
-        oil.running = st.isActive;
-        if (st.isActive) requestAnimationFrame(oilLoop);
-      },
-      onUpdate: (st) => (oil.vel += st.getVelocity() / -400000),
-    });
-    const glass = $('.tube__glass', tube);
-    tube.addEventListener('pointermove', (e) => {
-      const r = (glass ?? tube).getBoundingClientRect();
-      oil.target = clamp01((e.clientX - r.left) / r.width) * 0.9 - 0.45;
-    });
-    tube.addEventListener('pointerleave', () => (oil.target = 0));
-  }
-
-  // entrance reveals: CSS `translate` + IntersectionObserver, so hover `transform`s stay free and
-  // anchor jumps can never leave visible content stuck mid-animation
-  const io = new IntersectionObserver(
-    (entries) => {
-      for (const e of entries) {
-        if (!e.isIntersecting) continue;
-        e.target.classList.add('is-in');
-        io.unobserve(e.target);
-      }
-    },
-    { rootMargin: '0px 0px -6% 0px', threshold: 0.08 },
-  );
-  for (const group of ['.gauge', '.path', '.stats > div', '.versus li', '.ring', '.platform', '.qa details', '.tube', '.final__title']) {
-    $$(group).forEach((el, i) => {
-      el.classList.add('rv');
-      el.style.setProperty('--rv-i', String(i % 6));
-      io.observe(el);
-    });
-  }
-
-  document.fonts?.ready.then(() => ScrollTrigger.refresh());
-}
-
-// ── WebGL stage (loaded after first paint) ────────────────
-const canvas = $<HTMLCanvasElement>('#stage');
-const probe = document.createElement('canvas').getContext('webgl2');
-if (!canvas || !probe) {
-  root.classList.add('no-webgl');
-  const hero = $('.hero');
-  if (hero && !reduced) hero.insertAdjacentHTML('afterbegin', `<div class="hero__fallback" aria-hidden="true">${symbolSvg()}</div>`);
-} else {
-  const boot = () =>
-    import('./gl/scene').then(({ createStage }) => {
-      const lowPower = (navigator.hardwareConcurrency ?? 8) <= 4;
-      stage = createStage(canvas, {
-        count: mobile || lowPower ? 2600 : 5400,
-        dpr: Math.min(devicePixelRatio || 1, mobile ? 1.5 : 1.75),
-        mobile,
-      });
-      if (!stage) {
-        root.classList.add('no-webgl');
-        return;
-      }
-      stage.setTheme({ dark: root.classList.contains('dark') });
-      direct(stage);
-    });
-  if ('requestIdleCallback' in window) requestIdleCallback(() => boot(), { timeout: 600 });
-  else setTimeout(boot, 120);
-}
-
-/** Maps scroll to stage mode, morph and framing. */
-function direct(s: Stage) {
-  // [x, y, scale]: NDC position of the subject and its extra scale per scene
-  const heroFrame = mobile ? [0, 0.58, 0.62] : [0.52, 0.2, 0.72];
-  const machineFrame = mobile ? [0, -0.56, 1] : [0.3, -0.46, 0.8];
-  const finalFrame = mobile ? [0, 0.56, 0.5] : [0, 0.56, 0.4];
-  const scenes = { hero: true, offline: false, final: false };
-  let intro = reduced ? 1 : 0;
-  let m = 0;
-  let f = 0;
-  const captions = $$('[data-machine]');
-
-  const apply = () => {
-    const mode = scenes.offline ? 'offline' : scenes.hero || scenes.final ? 'primitives' : 'off';
-    s.setMode(mode);
-    if (scenes.final && !scenes.hero) {
-      s.setMorph(5, 1, f);
-      s.setFrame(finalFrame[0], finalFrame[1], finalFrame[2]);
-      return;
-    }
-    // manifesto schedule: hold symbol → excavator → timber truck → tractor → scatter
-    const seg: Array<[number, number, number, number]> = [
-      [0.0, 0.1, 1, 2],
-      [0.1, 0.32, 1, 2],
-      [0.32, 0.4, 2, 3],
-      [0.4, 0.6, 2, 3],
-      [0.6, 0.67, 3, 4],
-      [0.67, 0.87, 3, 4],
-      [0.87, 1.0, 4, 5],
-    ];
-    if (m <= 0) s.setMorph(0, 1, intro);
-    else {
-      const [a, b, from, to] = seg.find(([, end]) => m <= end) ?? seg[seg.length - 1];
-      const hold = a === 0 || a === 0.32 || a === 0.6;
-      s.setMorph(from, to, hold ? 0 : (m - a) / (b - a));
-    }
-    const k = clamp01(m / 0.18);
-    const e = k * k * (3 - 2 * k);
-    const lerp = (i: number) => heroFrame[i] + (machineFrame[i] - heroFrame[i]) * e;
-    s.setFrame(lerp(0), lerp(1), lerp(2));
-    const active = m > 0.2 && m < 0.9 ? (m < 0.4 ? 0 : m < 0.67 ? 1 : 2) : -1;
-    captions.forEach((c, i) => c.classList.toggle('is-on', i === active));
-  };
-
-  if (reduced) {
-    apply();
+// ── details dossier ─────────────────────────────────────
+const details = $('#details')!;
+let lastFocus: HTMLElement | null = null;
+function openDetails(section?: string) {
+  if (!root.classList.contains('film')) {
+    (section ? document.getElementById(section) : details)?.scrollIntoView({ behavior: 'smooth' });
     return;
   }
-  gsap.to(
-    { v: 0 },
-    {
-      v: 1,
-      duration: 2.4,
-      delay: 0.1,
-      ease: 'power2.out',
-      onUpdate(this: gsap.core.Tween) {
-        intro = (this.targets()[0] as { v: number }).v;
-        apply();
-      },
-    },
-  );
-  ScrollTrigger.create({
-    trigger: '.manifesto',
-    start: 'top 55%',
-    end: 'bottom bottom',
-    onUpdate: (st) => {
-      m = st.progress;
-      apply();
-    },
+  lastFocus = document.activeElement as HTMLElement | null;
+  root.classList.add('details-open');
+  document.body.style.overflow = 'hidden';
+  for (const el of $$('main, .bar')) el.setAttribute('inert', '');
+  details.setAttribute('role', 'dialog');
+  details.setAttribute('aria-modal', 'true');
+  const panel = $('.details__panel', details)!;
+  const target = section ? document.getElementById(section) : null;
+  panel.scrollTop = target ? target.offsetTop - 90 : 0;
+  requestAnimationFrame(() => $<HTMLElement>('.details__close', details)?.focus({ preventScroll: true }));
+}
+function closeDetails() {
+  if (!root.classList.contains('details-open')) return;
+  root.classList.remove('details-open');
+  document.body.style.overflow = '';
+  for (const el of $$('main, .bar')) el.removeAttribute('inert');
+  details.removeAttribute('role');
+  details.removeAttribute('aria-modal');
+  lastFocus?.focus({ preventScroll: true });
+}
+for (const b of $$('[data-open-details]')) b.addEventListener('click', () => openDetails(b.dataset.openDetails || undefined));
+for (const b of $$('[data-close-details]')) b.addEventListener('click', closeDetails);
+addEventListener('keydown', (e) => {
+  if (!root.classList.contains('details-open')) return;
+  if (e.key === 'Escape') closeDetails();
+  if (e.key === 'Tab') {
+    const items = $$<HTMLElement>('a[href], button, summary', details).filter((el) => el.offsetParent !== null);
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) (e.preventDefault(), last.focus());
+    else if (!e.shiftKey && document.activeElement === last) (e.preventDefault(), first.focus());
+  }
+});
+if (/^#(download|details)$/.test(location.hash)) requestAnimationFrame(() => openDetails(location.hash === '#download' ? 'downloads' : undefined));
+
+// ── magnetic buttons ────────────────────────────────────
+if (matchMedia('(hover: hover) and (prefers-reduced-motion: no-preference)').matches) {
+  for (const b of $$('[data-magnetic]')) {
+    b.addEventListener('pointermove', (e) => {
+      const r = b.getBoundingClientRect();
+      b.style.setProperty('--mx', `${((e.clientX - r.left) / r.width - 0.5) * 10}px`);
+      b.style.setProperty('--my', `${((e.clientY - r.top) / r.height - 0.5) * 8}px`);
+    });
+    b.addEventListener('pointerleave', () => {
+      b.style.setProperty('--mx', '0px');
+      b.style.setProperty('--my', '0px');
+    });
+  }
+}
+
+if (root.classList.contains('film')) void startFilm();
+
+async function startFilm() {
+  const reduced = root.classList.contains('film--still');
+  const canvas = $<HTMLCanvasElement>('canvas.stage')!;
+  const portrait = () => innerWidth / Math.max(1, innerHeight) < 0.85;
+  let stage: Stage;
+  try {
+    const { Stage } = await import('./film/gl/stage');
+    stage = new Stage(canvas, { portrait: portrait(), dpr: Math.min(devicePixelRatio || 1, portrait() ? 1.6 : 1.75), msaa: 4 });
+  } catch (e) {
+    console.warn('film disabled', e);
+    root.classList.remove('film', 'film--still');
+    return;
+  }
+
+  const worker = new Worker(new URL('./film/worker.ts', import.meta.url), { type: 'module' });
+  worker.onmessage = (e: MessageEvent<BuildResult>) => {
+    stage.setBuild(e.data);
+    worker.terminate();
+  };
+  const lowPower = (navigator.hardwareConcurrency ?? 8) <= 4;
+  worker.postMessage({ count: portrait() || lowPower ? 2400 : 4800, terrainRes: portrait() || lowPower ? 120 : 190, torusScale: 2.29 });
+  document.fonts.load('620 118px "Martian Mono"').finally(() => stage.buildDigits('620 118px "Martian Mono", ui-monospace, monospace'));
+
+  // scroll length: holds get more distance than transformations (see time.ts)
+  root.style.setProperty('--len', (SCROLL_WEIGHT * 0.52).toFixed(2));
+  history.scrollRestoration = 'manual';
+  scrollTo(0, 0);
+
+  const type = new TypeLayer(document, stage);
+  const playhead = new Playhead(reduced ? INTRO_END : 0);
+  const reel = buildReel((t) => scrollToFilm(t));
+  root.classList.add('film--live');
+
+  const maxScroll = () => Math.max(1, document.documentElement.scrollHeight - innerHeight);
+  const progress = () => Math.min(1, Math.max(0, scrollY / maxScroll()));
+  function scrollToFilm(t: number) {
+    scrollTo({ top: progressAt(t) * maxScroll(), behavior: reduced ? 'auto' : 'smooth' });
+  }
+  $('[data-restart]')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    scrollToFilm(INTRO_END);
   });
-  ScrollTrigger.create({
-    trigger: '.manifesto',
-    start: 'top bottom',
-    end: 'bottom 40%',
-    onToggle: (st) => {
-      scenes.hero = st.isActive || st.progress === 0;
-      apply();
-    },
+  // keyboard users: focusing a control inside a scene brings that scene on screen
+  document.addEventListener('focusin', (e) => {
+    const scene = (e.target as HTMLElement).closest<HTMLElement>('.scene');
+    if (!scene || root.classList.contains('details-open')) return;
+    const t = type.liveTime(scene);
+    if (t !== null && !scene.classList.contains('is-live')) scrollToFilm(t);
   });
-  ScrollTrigger.create({
-    trigger: '.offline',
-    start: 'top bottom',
-    end: 'bottom top',
-    onToggle: (st) => {
-      scenes.offline = st.isActive;
-      apply();
-    },
-  });
-  const queue = $('[data-queue]');
-  const queueState = $('[data-queue-state]');
-  ScrollTrigger.create({
-    trigger: '.offline',
-    start: 'top 60%',
-    end: 'bottom bottom',
-    onUpdate: (st) => {
-      const mx = 0.05 + 0.9 * st.progress;
-      s.setOffline(st.progress);
-      const edge = 0.6;
-      const stored = Math.floor(Math.max(0, Math.min(mx, edge) - 0.07) / 0.021 + (mx > 0.07 ? 1 : 0)) * 21;
-      const flush = clamp01((mx - edge) / 0.16);
-      const left = Math.round(stored * (1 - flush));
-      if (queue) queue.textContent = ru(left, 0);
-      if (queueState) {
-        const off = mx < edge;
-        queueState.textContent = off ? 'нет сети · копим' : flush < 1 ? 'сеть есть · досылаем' : 'на связи · данные свежие';
-        queueState.classList.toggle('is-off', off);
+
+  addEventListener('pointermove', (e) => stage.setPointer((e.clientX / innerWidth) * 2 - 1, (e.clientY / innerHeight) * 2 - 1), { passive: true });
+
+  // reduced motion: rest on chapter frames, cross-dissolve between them
+  const chapterFor = (p: number) => {
+    let best = 0;
+    for (let i = 0; i < CHAPTERS.length; i++) if (p >= (progressAt(CHAPTERS[Math.max(0, i - 1)].t) + progressAt(CHAPTERS[i].t)) / 2 - 1e-6) best = i;
+    return best;
+  };
+  let chapter = -1;
+  let fadeStart = -1;
+
+  let sway = 0, swayV = 0, slosh = 0, sloshV = 0, lastV = 0;
+  let last = performance.now();
+  let frames = 0, slow = 0, fast = 0;
+  let paused = false;
+  let manual: { T: number; time: number } | null = null;
+
+  function render(now: number) {
+    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+    last = now;
+    let T: number;
+    let prevMix = 0;
+    if (manual) T = manual.T;
+    else if (reduced) {
+      const c = chapterFor(progress());
+      if (c !== chapter) {
+        if (chapter >= 0) {
+          stage.snapshot();
+          fadeStart = now;
+        }
+        chapter = c;
       }
-    },
+      T = CHAPTERS[chapter].t - (chapter === CHAPTERS.length - 1 ? 0.001 : 0);
+      if (fadeStart >= 0) prevMix = Math.max(0, 1 - (now - fadeStart) / 350);
+    } else {
+      playhead.target = filmAt(progress());
+      if (!paused) playhead.update(dt);
+      T = playhead.t;
+    }
+    // secondary motion: text leans with the playhead's speed, oil sloshes with its acceleration
+    const v = reduced || manual ? 0 : playhead.v;
+    swayV += (40 * (v - sway) - 7 * swayV) * dt;
+    sway += swayV * dt;
+    const acc = dt > 0 ? (v - lastV) / dt : 0;
+    lastV = v;
+    sloshV += (-30 * slosh - 3.2 * sloshV + acc * 0.9) * dt;
+    slosh += sloshV * dt;
+
+    stage.resize(portrait());
+    if (T > 14.9 && T < 15.9) {
+      const d = stage.dotAt(OIL.handoff);
+      stage.handoff = stage.projectAt(OIL.handoff, d.pos);
+    }
+    const time = manual ? manual.time : reduced ? 0 : now / 1000;
+    stage.frame({ T, time, sway: reduced ? 0 : sway, slosh: reduced ? 0 : slosh, pointer: [0, 0], still: reduced, prevMix });
+    type.update(T, reduced ? 0 : sway);
+    reel(T);
+
+    // adaptive resolution keeps weaker GPUs near 60 fps
+    if (!manual && !reduced) {
+      frames++;
+      if (dt > 0.026) slow++;
+      else if (dt < 0.0135) fast++;
+      if (frames >= 45) {
+        if (slow > 18 && stage.renderScale > 0.6) stage.renderScale = Math.max(0.6, stage.renderScale - 0.1);
+        else if (fast > 42 && stage.renderScale < 1) stage.renderScale = Math.min(1, stage.renderScale + 0.05);
+        frames = slow = fast = 0;
+      }
+    }
+  }
+
+  const loop = (now: number) => {
+    if (!document.hidden) render(now);
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+
+  if (new URLSearchParams(location.search).has('debug')) {
+    Object.assign(window, {
+      __film: {
+        state: () => ({ t: playhead.t, v: playhead.v, target: playhead.target, ready: stage.ready, scale: stage.renderScale }),
+        seek: (T: number, time = 1) => {
+          manual = { T, time };
+          render(performance.now());
+        },
+        free: () => {
+          manual = null;
+        },
+        pause: (p = true) => {
+          paused = p;
+        },
+        step: (dt: number) => {
+          playhead.target = filmAt(progress());
+          playhead.update(dt);
+          return playhead.t;
+        },
+        stage,
+      },
+    });
+  }
+}
+
+/** Chapter ticks and the timecode under the film. */
+function buildReel(go: (t: number) => void) {
+  const list = $('[data-chapters]')!;
+  const time = $('[data-timecode]')!;
+  const label = $('[data-chapter]')!;
+  const buttons = CHAPTERS.map((c, i) => {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = `<span>${String(i + 1).padStart(2, '0')} · ${c.title}</span>`;
+    b.setAttribute('aria-label', `Глава ${i + 1}: ${c.title}`);
+    b.addEventListener('click', () => go(c.t));
+    li.append(b);
+    list.append(li);
+    return b;
   });
-  ScrollTrigger.create({
-    trigger: '.final',
-    start: 'top bottom',
-    end: 'bottom top',
-    onToggle: (st) => {
-      scenes.final = st.isActive;
-      apply();
-    },
-  });
-  ScrollTrigger.create({
-    trigger: '.final',
-    start: 'top bottom',
-    end: 'top 20%',
-    scrub: 0.6,
-    onUpdate: (st) => {
-      f = st.progress;
-      apply();
-    },
-  });
-  addEventListener(
-    'pointermove',
-    (e) => s.setPointer((e.clientX / innerWidth) * 2 - 1, (e.clientY / innerHeight) * 2 - 1),
-    { passive: true },
-  );
+  const starts = CHAPTERS.map((c, i) => (i === 0 ? 0 : CHAPTERS[i - 1].t));
+  let lastText = '';
+  return (T: number) => {
+    const s = Math.floor(T);
+    const text = `00:${String(s).padStart(2, '0')},${Math.floor((T - s) * 10)}`;
+    if (text !== lastText) {
+      time.textContent = text;
+      lastText = text;
+    }
+    let active = 0;
+    CHAPTERS.forEach((c, i) => {
+      const fill = Math.min(1, Math.max(0, (T - starts[i]) / (c.t - starts[i])));
+      buttons[i].style.setProperty('--fill', fill.toFixed(3));
+      if (T >= starts[i]) active = i;
+    });
+    buttons.forEach((b, i) => b.setAttribute('aria-current', String(i === active)));
+    const next = `${String(active + 1).padStart(2, '0')} · ${CHAPTERS[active].title}`;
+    if (label.textContent !== next) label.textContent = next;
+    void D;
+  };
 }
